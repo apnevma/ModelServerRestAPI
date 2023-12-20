@@ -62,7 +62,7 @@ def create_endpoint(file_path):
 
             # Add the endpoint to the dictionary for future reference
         endpoints[endpoint] = dynamic_endpoint
-        print("Created endpoint " + endpoint_path)
+        print("Created endpoint " + endpoint)
     else:
         print(extension + " extension not supported!")
 

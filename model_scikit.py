@@ -8,7 +8,7 @@ def load_joblib(filename):
 
 def predict_joblib(model, input_data):
     # Perform prediction using the loaded model
-    prediction = model.predict([input_data])[0]
+    prediction = model.predict(input_data)[0]
 
     # Convert prediction to a JSON response
     response = {'prediction': prediction}
