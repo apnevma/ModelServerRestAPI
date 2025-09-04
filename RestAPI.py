@@ -6,6 +6,7 @@ import os
 
 # Local imports
 import model_detector
+from utils import make_json_serializable
 
 PORT = 8086
 
@@ -52,13 +53,13 @@ def create_endpoint(file_path):
         @cross_origin()
         def dynamic_endpoint():
             data = request.get_json()
+            features = data["input"]
 
             # Process the data (example: echoing back the received data)
-            result = {"received_data": data}
-            result = model_detector.predict(folder_to_monitor + endpoint_path,model,data)
+            result = model_detector.predict(folder_to_monitor + endpoint_path, model, features)
 
             # Return the result as JSON
-            return jsonify(result)
+            return jsonify({"prediction": result})
 
             # Add the endpoint to the dictionary for future reference
         endpoints[endpoint] = dynamic_endpoint
@@ -83,4 +84,5 @@ if __name__ == '__main__':
     initialize_endpoints()
     start_monitoring()
     # Run the Flask app on port
-    app.run(host='0.0.0.0', port=PORT)
+    # app.run(host='0.0.0.0', port=PORT)
+    app.run(port=PORT)      # run locally

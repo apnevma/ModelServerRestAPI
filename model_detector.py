@@ -2,6 +2,7 @@ import os
 import model_tensorflow
 import model_scikit
 import model_pytorch
+from utils import make_json_serializable
 
 def switch_case_load(filename):
     _, extension = os.path.splitext(filename)
@@ -17,7 +18,7 @@ def switch_case_load(filename):
         model = model_pytorch.load_pt(filename)
     if extension == '.params':
         print('Processing model from MXNet')
-        model = model_mxnet.load_params(filename)
+        #model = model_mxnet.load_params(filename)
     return model
 
 
@@ -44,4 +45,4 @@ def detect(filename):
 def predict(filename, model,data):
     # A method which detects how to load a model judging by its extension
     prediction = switch_case_predict(filename,model,data)
-    return prediction
+    return make_json_serializable(prediction)
