@@ -1,11 +1,11 @@
 import requests
 
-# URL of your local model endpoint
+# URL of local model endpoint
 url = "http://127.0.0.1:8086/rf_model"
 
 # Example input data (features = [temperature, humidity, soundLevel])
 data = {
-    "input": [[75.5, 20.0, 76.0]]
+    "input": [[70.5, 20.0, 76.0]]
 }
 
 try:

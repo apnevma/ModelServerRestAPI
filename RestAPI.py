@@ -45,24 +45,33 @@ def create_endpoint(file_path):
     endpoint_path = os.path.relpath(file_path, folder_to_monitor)
     filename, extension = os.path.splitext(endpoint_path)
     endpoint = '/' + filename.replace(os.path.sep, '/')
-    model = model_detector.detect(folder_to_monitor + endpoint_path)
+    model_info, model = model_detector.detect(folder_to_monitor + endpoint_path)
 
-    # Define a dynamic route for the endpoint
     if model is not None:
-        @app.route(endpoint, methods=['POST'])
-        @cross_origin()
-        def dynamic_endpoint():
+        print("Model info for", filename, ":", model_info)
+        # Define a dynamic route function
+        def predict():
             data = request.get_json()
             features = data["input"]
 
-            # Process the data (example: echoing back the received data)
-            result = model_detector.predict(folder_to_monitor + endpoint_path, model, features)
+            result = model_detector.predict(
+                folder_to_monitor + endpoint_path,
+                model,
+                features
+            )
 
-            # Return the result as JSON
             return jsonify({"prediction": result})
 
-            # Add the endpoint to the dictionary for future reference
-        endpoints[endpoint] = dynamic_endpoint
+        # Register with Flask, give it a unique endpoint name
+        app.add_url_rule(
+            endpoint,                      # URL path (e.g., /rf_model)
+            endpoint,                      # unique endpoint name (uses filename)
+            cross_origin()(predict),       # enable CORS on this route
+            methods=['POST']
+        )
+
+        # Keep track in your dictionary
+        endpoints[endpoint] = predict
         print("Created endpoint " + endpoint)
     else:
         print(extension + " extension not supported!")
