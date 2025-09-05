@@ -16,6 +16,7 @@ def get_h5_model_info(model):
     # Input shape
     try:
         input_shape = model.input_shape
+        input_type = str(model.inputs[0].dtype)
     except AttributeError:
         input_shape = "unknown"
     
@@ -37,6 +38,7 @@ def get_h5_model_info(model):
     return {
         "type": "Keras/TensorFlow",
         "input_shape": input_shape,
+        "input_type": input_type,
         "output_shape": output_shape,
         #"summary": summary_text
     }

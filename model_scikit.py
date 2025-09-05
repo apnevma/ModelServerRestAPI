@@ -13,9 +13,20 @@ def get_scikit_model_info(model):
     except AttributeError:
         input_shape = "unknown"
     
+    input_dtype = "unknown"
+    try:
+        if hasattr(model, "coef_"):
+            # coefficients usually have same dtype as training data
+            input_dtype = str(model.coef_.dtype)
+        elif hasattr(model, "feature_importances_"):
+            input_dtype = str(model.feature_importances_.dtype)
+    except Exception:
+        input_dtype = "unknown"
+
     return {
         "type": "Scikit-learn",
         "input_shape": input_shape,
+        "input_dtype": input_dtype,
         "example": [0] * input_shape[0] if input_shape != "unknown" else None
     }
 
