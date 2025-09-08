@@ -6,12 +6,28 @@ A Flask-based REST API for serving machine learning models dynamically. So far, 
 
 ## Features
 
-- Automatically detects and loads models from a specified folder: `models/`.
-- Creates a REST endpoint for each model.
-- Supports both Scikit-learn and TensorFlow/Keras models.
-- Provides input shape and type information for each model.
-- Returns predictions in JSON format.
-- Cross-Origin Resource Sharing (CORS) enabled for easy integration.
+- **Dynamic model serving**  
+  Automatically detects and loads models from the `models/` folder.
+
+- **Automatic endpoint creation**  
+  Each model is served under `/model_name` (e.g., `/rf_model`, `/global_model`).
+
+- **File stability check**  
+  Ensures a model file is fully written before loading it, preventing `PermissionError`.
+
+- **Multi-framework support**  
+  - Scikit-learn models (`.pkl`, `.joblib`)
+  - TensorFlow/Keras models (`.h5`)
+
+- **Model info introspection**  
+  Provides input shape and expected data type for each model.  
+  If a prediction request fails due to wrong input format, the API returns the model’s input requirements.
+
+- **JSON predictions**  
+  Predictions are returned in structured JSON format.
+
+- **CORS enabled**  
+  Easy integration with web clients.
 
 
 
