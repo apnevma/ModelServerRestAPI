@@ -26,15 +26,6 @@ def get_h5_model_info(model):
     except AttributeError:
         output_shape = "unknown"
 
-    '''
-    # Layer summary (text)
-    from io import StringIO
-    import sys
-    buffer = StringIO()
-    model.summary(print_fn=lambda x: buffer.write(x + "\n"))
-    summary_text = buffer.getvalue()
-    '''
-
     return {
         "type": "Keras/TensorFlow",
         "input_shape": input_shape,

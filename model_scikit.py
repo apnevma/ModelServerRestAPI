@@ -1,10 +1,17 @@
 import joblib
-from utils import make_json_serializable 
+from utils import make_json_serializable, wait_until_stable
 
 def load_joblib(filename):
-    model = joblib.load(filename)
-    info = get_scikit_model_info(model)
-    return info, model
+    # Wait until file is fully written before loading
+    if wait_until_stable(filename):
+        print(f"File {filename} is stable, loading model...")
+        model = joblib.load(filename)
+        info = get_scikit_model_info(model)
+        return info, model
+    else:
+        print(f"File {filename} did not stabilize in time, skipping.")    
+    
+
 
 
 def get_scikit_model_info(model):

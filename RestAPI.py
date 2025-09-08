@@ -48,7 +48,7 @@ def create_endpoint(file_path):
     model_info, model = model_detector.detect(folder_to_monitor + endpoint_path)
 
     if model is not None:
-        print("Model info for", filename, ":", model_info)
+        print("Model info for", filename + ":", model_info)
         # Define a dynamic route function
         def predict():
             data = request.get_json()
