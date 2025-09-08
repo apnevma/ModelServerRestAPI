@@ -1,6 +1,7 @@
 import joblib
 from utils import make_json_serializable, wait_until_stable
 
+
 def load_joblib(filename):
     # Wait until file is fully written before loading
     if wait_until_stable(filename):
@@ -11,8 +12,6 @@ def load_joblib(filename):
     else:
         print(f"File {filename} did not stabilize in time, skipping.")    
     
-
-
 
 def get_scikit_model_info(model):
     try:
@@ -41,7 +40,6 @@ def get_scikit_model_info(model):
 def predict_joblib(model, input_data):
     # Perform prediction using the loaded model
     prediction = model.predict(input_data)[0]
-
 
     # Convert to pure Python types (int, float, list)
     prediction = make_json_serializable(prediction)

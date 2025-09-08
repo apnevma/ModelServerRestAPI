@@ -54,13 +54,14 @@ def create_endpoint(file_path):
             data = request.get_json()
             features = data["input"]
 
-            result = model_detector.predict(
-                folder_to_monitor + endpoint_path,
-                model,
-                features
-            )
-
-            return jsonify({"prediction": result})
+            try:
+                result = model_detector.predict(folder_to_monitor + endpoint_path, model, features)
+                return jsonify({"prediction": result})
+            except Exception as e:
+                return jsonify({
+                    "error": str(e),
+                    "expected_input": model_info
+                })
 
         # Register with Flask, give it a unique endpoint name
         app.add_url_rule(
