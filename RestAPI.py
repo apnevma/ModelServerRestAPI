@@ -6,7 +6,6 @@ import os
 
 # Local imports
 import model_detector
-from utils import make_json_serializable
 
 PORT = 8086
 
@@ -26,10 +25,7 @@ def initialize_endpoints():
     for filename in os.listdir(folder_to_monitor):
         file_path = os.path.join(folder_to_monitor, filename)
 
-        # Check if it's a file (not a subdirectory)
-        if os.path.isfile(file_path):
-            # Define a dynamic route for the endpoint
-            create_endpoint(file_path)
+        create_endpoint(file_path)
 
 
 class MyHandler(FileSystemEventHandler):
@@ -45,11 +41,12 @@ def create_endpoint(file_path):
     endpoint_path = os.path.relpath(file_path, folder_to_monitor)
     filename, extension = os.path.splitext(endpoint_path)
     endpoint = '/' + filename.replace(os.path.sep, '/')
+
     model_info, model = model_detector.detect(folder_to_monitor + endpoint_path)
 
     if model is not None:
         print("Model info for", filename + ":", model_info)
-        # Define a dynamic route function
+
         def predict():
             data = request.get_json()
             features = data["input"]
@@ -63,17 +60,16 @@ def create_endpoint(file_path):
                     "expected_input": model_info
                 })
 
-        # Register with Flask, give it a unique endpoint name
         app.add_url_rule(
-            endpoint,                      # URL path (e.g., /rf_model)
-            endpoint,                      # unique endpoint name (uses filename)
-            cross_origin()(predict),       # enable CORS on this route
+            endpoint,                      # URL path (e.g., /fire_nn)
+            endpoint,                      # unique endpoint name
+            cross_origin()(predict),       # enable CORS
             methods=['POST']
         )
 
-        # Keep track in your dictionary
         endpoints[endpoint] = predict
         print("Created endpoint " + endpoint)
+
     else:
         print(extension + " extension not supported!")
 
