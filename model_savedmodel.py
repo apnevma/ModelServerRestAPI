@@ -22,10 +22,17 @@ def load_savedmodel(model_folder):
         "note": "I/O schema not introspected; use metadata or sidecar metadata.json"
     }
     return model_info, info["serving_url"]
-
+    
 
 def predict_savedmodel(serving_url, input_data):
-    payload = {"instances": [input_data]}
+    # If input_data comes from Flask {"input": [...]}, extract the array
+    if isinstance(input_data, dict) and "input" in input_data:
+        instances = input_data["input"]
+    else:
+        instances = input_data  # fallback
+
+    payload = {"instances": instances}
+    
     try:
         response = requests.post(serving_url, json=payload)
         response.raise_for_status()
