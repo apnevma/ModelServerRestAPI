@@ -1,0 +1,9 @@
+{
+  "fire_nn": {
+    "container_name": "tf_fire_nn",
+    "host_port": 8501,
+    "serving_url": "http://localhost:8501/v1/models/fire_nn:predict",
+    "status_url": "http://localhost:8501/v1/models/fire_nn",
+    "model_name": "fire_nn"
+  }
+}

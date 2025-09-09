@@ -1,5 +1,6 @@
 import os
 import requests
+from tf_serving_manager import ensure_container
 from utils import find_latest_saved_model_folder
 
 def load_savedmodel(model_folder):
@@ -9,16 +10,18 @@ def load_savedmodel(model_folder):
         raise ValueError(f"No valid SavedModel found inside {model_folder}")
 
     model_name = os.path.basename(model_folder.rstrip("/\\"))
-    serving_url = f"http://localhost:8501/v1/models/{model_name}:predict"
-
-    info = {
-        "type": "TensorFlow (TF Serving)",
+    model_abs = os.path.abspath(model_folder)
+    
+    info = ensure_container(model_name, model_abs)  # starts/returns container
+    model_info = {
+        "type": "TensorFlow (TF Serving, per-model container)",
         "model_name": model_name,
-        "serving_url": serving_url,
-        "note": "Input/output info not introspected yet — query TF Serving metadata or keep a metadata.json."
+        "serving_url": info["serving_url"],
+        "status_url": info["status_url"],
+        "host_port": info["host_port"],
+        "note": "I/O schema not introspected; use metadata or sidecar metadata.json"
     }
-
-    return info, serving_url
+    return model_info, info["serving_url"]
 
 
 def predict_savedmodel(serving_url, input_data):
@@ -29,3 +32,4 @@ def predict_savedmodel(serving_url, input_data):
         return response.json()
     except requests.RequestException as e:
         return {"error": str(e)}
+    

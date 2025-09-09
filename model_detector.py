@@ -28,6 +28,7 @@ def switch_case_load(filename):
 
     elif os.path.isdir(filename):
         # SavedModel → TF Serving
+        print("Processing SavedModel for TF Serving")
         info, model = model_savedmodel.load_savedmodel(filename)
 
     else:
