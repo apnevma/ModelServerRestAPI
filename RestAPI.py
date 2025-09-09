@@ -53,7 +53,12 @@ def create_endpoint(file_path):
 
             try:
                 result = model_detector.predict(folder_to_monitor + endpoint_path, model, features)
+
+                # If TF Serving, unwrap the 'predictions' key
+                if isinstance(result, dict) and "predictions" in result:
+                    return jsonify({"prediction": result["predictions"]})
                 return jsonify({"prediction": result})
+            
             except Exception as e:
                 return jsonify({
                     "error": str(e),
