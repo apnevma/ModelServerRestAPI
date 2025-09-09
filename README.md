@@ -68,3 +68,31 @@ python RestAPI.py
 The API will run on:
 http://127.0.0.1:8086
 
+### Test a model
+You can test a loaded model using the provided `prediction_test.py` script. For example, to test the `fire_nn` model:  
+```python
+import requests
+
+# URL of the local model endpoint
+url = "http://localhost:8086/fire_nn"
+
+# Example input data (features = [temperature, humidity, soundLevel])
+data = {
+    "input": [[70.5, 20.0, 76.0]]
+}
+
+try:
+    # Send POST request
+    response = requests.post(url, json=data)
+    response.raise_for_status()  # Raise exception if HTTP error
+
+    # Get JSON result
+    prediction = response.json()
+    print(prediction)
+
+except requests.exceptions.RequestException as e:
+    print("Error communicating with server:", e)
+```
+#### Notes:
+  * Replace `"fire_nn"` with the name of the model you want to test.
+  * Input data should match the model’s expected format. If it doesn’t, the API will return the expected input info.
