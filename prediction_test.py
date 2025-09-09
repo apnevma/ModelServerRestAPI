@@ -1,11 +1,11 @@
 import requests
 
 # URL of local model endpoint
-url = "http://127.0.0.1:8086/rf_model"
+url = "http://localhost:8501/v1/models/fire_nn:predict"
 
 # Example input data (features = [temperature, humidity, soundLevel])
 data = {
-    "input": [[70.5, 20.0, 76.0]]
+    "instances": [[70.5, 20.0, 76.0]]
 }
 
 try:
