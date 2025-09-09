@@ -1,7 +1,6 @@
 # ModelServer REST API
 
-A Flask-based REST API for serving machine learning models dynamically. So far, supports **Scikit-learn** (`.pkl`) and **TensorFlow** (`.h5`) models. Each model is exposed as its own endpoint, allowing clients to send input data and receive predictions in JSON format.
-
+A Flask-based REST API for serving machine learning models dynamically. So far, supports **Scikit-learn** (`.pkl`) and **TensorFlow** models. Each model is exposed as its own endpoint, allowing clients to send input data and receive predictions in JSON format.
 
 
 ## Features
@@ -12,15 +11,19 @@ A Flask-based REST API for serving machine learning models dynamically. So far, 
 - **Automatic endpoint creation**  
   Each model is served under `/model_name` (e.g., `/rf_model`, `/global_model`).
 
+- **TF Serving integration**  
+  SavedModel folders are automatically served via individual Docker containers running TensorFlow Serving. Flask endpoints proxy requests to the corresponding TF Serving URL.
+
 - **File stability check**  
-  Ensures a model file is fully written before loading it, preventing `PermissionError`.
+  Ensures a model file/folder is fully written before loading it, preventing `PermissionError`.
 
 - **Multi-framework support**  
-  - Scikit-learn models (`.pkl`, `.joblib`)
-  - TensorFlow/Keras models (`.h5`)
+  - Scikit-learn models (`.pkl`, `.joblib`)  
+  - TensorFlow/Keras models (`.h5`)  
+  - TensorFlow SavedModels (`./models/model_name/version/saved_model.pb`) served via TF Serving
 
 - **Model info introspection**  
-  Provides input shape and expected data type for each model.  
+  Provides input shape and expected data type for each local model.  
   If a prediction request fails due to wrong input format, the API returns the model’s input requirements.
 
 - **JSON predictions**  
