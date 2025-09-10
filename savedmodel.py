@@ -2,6 +2,7 @@ import os
 import requests
 from tf_serving_manager import ensure_container
 from utils import find_latest_saved_model_folder, wait_until_stable
+from flask import jsonify
 
 def load_savedmodel(model_folder):
     # Wait until file is fully written before loading
@@ -44,6 +45,30 @@ def predict_savedmodel(serving_url, input_data):
         response = requests.post(serving_url, json=payload)
         response.raise_for_status()
         return response.json()
-    except requests.RequestException as e:
-        return {"error": str(e)}
     
+    except requests.RequestException as e:
+        # Derive metadata URL
+        metadata_url = serving_url.replace(":predict", "") + "/metadata"
+        try:
+            meta_resp = requests.get(metadata_url)
+            meta_resp.raise_for_status()
+            metadata = meta_resp.json()
+            
+            # Extract only input names, shapes, and dtypes
+            sig_def = metadata.get("metadata", {}).get("signature_def", {}).get("signature_def", {})
+            serving_default = sig_def.get("serving_default", {})
+            inputs = serving_default.get("inputs", {})
+            
+            simplified_inputs = {}
+            for name, tensor_info in inputs.items():
+                shape = [int(dim.get("size", -1)) for dim in tensor_info.get("tensor_shape", {}).get("dim", [])]
+                dtype = tensor_info.get("dtype", "unknown")
+                simplified_inputs[name] = {"shape": shape, "dtype": dtype}
+                
+        except Exception as meta_err:
+            simplified_inputs = {"error": f"Failed to fetch metadata: {meta_err}"}
+
+        return {
+            "error": str(e),
+            "expected_input": simplified_inputs
+        }
