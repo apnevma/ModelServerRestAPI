@@ -27,19 +27,37 @@ def make_json_serializable(obj):
 
 
 
-# Wait until a new file stabilizes
-def wait_until_stable(filepath, timeout=10, interval=0.5):
+
+def wait_until_stable(path, timeout=10, interval=0.5):
+    """
+    Wait until a file or directory stops changing in size.
+    Returns True if stable, False if timeout.
+    """
     prev_size = -1
     start = time.time()
+
     while time.time() - start < timeout:
         try:
-            size = os.path.getsize(filepath)
+            if os.path.isfile(path):
+                size = os.path.getsize(path)
+            elif os.path.isdir(path):
+                # Sum of sizes of all files inside the directory
+                size = sum(
+                    os.path.getsize(os.path.join(root, f))
+                    for root, _, files in os.walk(path)
+                    for f in files
+                    if os.path.isfile(os.path.join(root, f))
+                )
+            else:
+                size = -1
         except OSError:
             size = -1
+
         if size == prev_size and size > 0:
             return True
         prev_size = size
         time.sleep(interval)
+
     return False
 
 

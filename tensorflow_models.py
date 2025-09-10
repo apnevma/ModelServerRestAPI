@@ -1,12 +1,18 @@
 import tensorflow as tf
 from flask import jsonify
+from utils import wait_until_stable
 
 
 def load_h5(model_path):
-    model = tf.keras.models.load_model(model_path)
-    info = get_h5_model_info(model)
-
-    return info, model
+    # Wait until file is fully written before loading
+    if wait_until_stable(model_path):
+        print(f"File {model_path} is stable, loading model...")
+        model = tf.keras.models.load_model(model_path)
+        info = get_h5_model_info(model)
+        return info, model
+    else:
+        print(f"File {model_path} did not stabilize in time, skipping.")
+    
 
 
 def get_h5_model_info(model):

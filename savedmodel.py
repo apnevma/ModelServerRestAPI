@@ -1,9 +1,16 @@
 import os
 import requests
 from tf_serving_manager import ensure_container
-from utils import find_latest_saved_model_folder
+from utils import find_latest_saved_model_folder, wait_until_stable
 
 def load_savedmodel(model_folder):
+    # Wait until file is fully written before loading
+    if wait_until_stable(model_folder):
+        print(f"Folder {model_folder} is stable, loading SavedModel folder...")
+    else:
+        print(f"Folder {model_folder} did not stabilize in time, skipping.")
+        return
+
     # Ensure there's at least one version folder with saved_model.pb
     latest_folder = find_latest_saved_model_folder(model_folder)
     if latest_folder is None:

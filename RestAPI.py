@@ -30,11 +30,18 @@ def initialize_endpoints():
 
 class MyHandler(FileSystemEventHandler):
     def on_created(self, event):
-        if event.is_directory:
+        if event.event_type != 'created':
             return
-        elif event.event_type == 'created':
-            file_path = event.src_path
-            create_endpoint(file_path)
+
+        file_path = event.src_path
+
+        # Ignore subdirectories inside a model folder (e.g., version "1")
+        rel_path = os.path.relpath(file_path, folder_to_monitor)
+        parts = rel_path.split(os.sep)
+        if len(parts) > 1:  # e.g., "fire_nn/1" → ignore
+            return
+
+        create_endpoint(file_path)
 
 
 def create_endpoint(file_path):
