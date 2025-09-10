@@ -1,8 +1,8 @@
 import os
-import model_tensorflow
-import model_scikit
-import model_pytorch
-import model_savedmodel
+import tensorflow_models
+import scikit_models
+import pytorch_models
+import savedmodel
 from utils import make_json_serializable
 
 
@@ -12,15 +12,15 @@ def switch_case_load(filename):
 
     if extension in ['.h5', '.tf']:
         print("Processing model from Tensorflow (H5)")
-        info, model = model_tensorflow.load_h5(filename)
+        info, model = tensorflow_models.load_h5(filename)
 
     elif extension in ['.pkl', '.joblib']:
         print("Processing model from Scikit-learn")
-        info, model = model_scikit.load_joblib(filename)
+        info, model = scikit_models.load_joblib(filename)
 
     elif extension in ['.pt', '.pth']:
         print("Processing model from PyTorch")
-        model = model_pytorch.load_pt(filename)
+        model = pytorch_models.load_pt(filename)
 
     elif extension == '.params':
         print("Processing model from MXNet")
@@ -29,7 +29,7 @@ def switch_case_load(filename):
     elif os.path.isdir(filename):
         # SavedModel → TF Serving
         print("Processing SavedModel for TF Serving")
-        info, model = model_savedmodel.load_savedmodel(filename)
+        info, model = savedmodel.load_savedmodel(filename)
 
     else:
         print("Unsupported format:", filename)
@@ -42,16 +42,16 @@ def switch_case_predict(filename, model, data):
 
     # Case: TF Serving (model is just a serving URL string)
     if isinstance(model, str) and model.startswith("http"):
-        return model_savedmodel.predict_savedmodel(model, data)
+        return savedmodel.predict_savedmodel(model, data)
 
     # Case: local models
     prediction = None
     if extension in ['.h5', '.tf']:
-        prediction = model_tensorflow.predict_h5(model, data)
+        prediction = tensorflow_models.predict_h5(model, data)
     elif extension in ['.pkl', '.joblib']:
-        prediction = model_scikit.predict_joblib(model, data)
+        prediction = scikit_models.predict_joblib(model, data)
     elif extension in ['.pt', '.pth']:
-        prediction = model_pytorch.predict_pt(model, data)
+        prediction = pytorch_models.predict_pt(model, data)
 
     return prediction
 

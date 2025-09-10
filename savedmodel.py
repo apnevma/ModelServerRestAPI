@@ -19,7 +19,7 @@ def load_savedmodel(model_folder):
         "serving_url": info["serving_url"],
         "status_url": info["status_url"],
         "host_port": info["host_port"],
-        "note": "I/O schema not introspected; use metadata or sidecar metadata.json"
+        "note": "I/O schema not introspected; use metadata"
     }
     return model_info, info["serving_url"]
     
