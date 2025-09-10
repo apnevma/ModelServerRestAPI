@@ -10,9 +10,9 @@ def switch_case_load(filename):
     _, extension = os.path.splitext(filename)
     model = None
 
-    if extension in ['.h5', '.tf']:
-        print("Processing model from Tensorflow (H5)")
-        info, model = tensorflow_models.load_h5(filename)
+    if extension in ['.h5', '.keras']:
+        print("Processing model from Tensorflow (.h5 or .keras)")
+        info, model = tensorflow_models.load_tensorflow(filename)
 
     elif extension in ['.pkl', '.joblib']:
         print("Processing model from Scikit-learn")
@@ -46,8 +46,8 @@ def switch_case_predict(filename, model, data):
 
     # Case: local models
     prediction = None
-    if extension in ['.h5', '.tf']:
-        prediction = tensorflow_models.predict_h5(model, data)
+    if extension in ['.h5', '.keras']:
+        prediction = tensorflow_models.predict_tensorflow(model, data)
     elif extension in ['.pkl', '.joblib']:
         prediction = scikit_models.predict_joblib(model, data)
     elif extension in ['.pt', '.pth']:
