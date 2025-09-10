@@ -3,6 +3,8 @@ import torch
 import os
 import time
 
+
+
 def make_json_serializable(obj):
     """
     Recursively convert objects to JSON-serializable types.
@@ -24,7 +26,6 @@ def make_json_serializable(obj):
         return {k: make_json_serializable(v) for k, v in obj.items()}
     else:
         return obj  # assume already serializable
-
 
 
 
@@ -59,6 +60,7 @@ def wait_until_stable(path, timeout=10, interval=0.5):
         time.sleep(interval)
 
     return False
+
 
 
 def find_latest_saved_model_folder(model_root_folder):
@@ -98,3 +100,29 @@ def find_latest_saved_model_folder(model_root_folder):
         return latest_version_path
     else:
         return None
+
+
+
+# Transform metadata to a friendlier, user-readable schema
+def transform_to_friendly_inputs(metadata):
+
+    # Extract only input names, shapes, and dtypes
+    sig_def = metadata.get("metadata", {}).get("signature_def", {}).get("signature_def", {})
+    serving_default = sig_def.get("serving_default", {})
+    inputs = serving_default.get("inputs", {})
+            
+    friendly_inputs = {}
+    for name, tensor_info in inputs.items():
+        shape = [int(dim.get("size", -1)) for dim in tensor_info.get("tensor_shape", {}).get("dim", [])]
+        dtype = tensor_info.get("dtype", "unknown")
+
+        # Turn -1 into "batch_size"
+        shape_str = ["batch_size" if dim == -1 else str(dim) for dim in shape]
+        shape_str = f"[{', '.join(shape_str)}]"   
+
+        friendly_inputs[name] = {
+            "dtype": dtype.lower().replace("dt_", ""),  # e.g. "DT_FLOAT" -> "float"
+            "shape": shape_str,
+        }
+
+    return friendly_inputs
