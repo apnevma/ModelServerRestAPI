@@ -1,6 +1,6 @@
 # ModelServer REST API
 
-A Flask-based REST API for serving machine learning models dynamically. So far, supports **Scikit-learn** (`.pkl`) and **TensorFlow** models. Each model is exposed as its own endpoint, allowing clients to send input data and receive predictions in JSON format.
+A Flask-based REST API for dynamically serving machine learning models. Supports **Scikit-learn**, **TensorFlow/Keras**, **TensorFlow SavedModels**, and **PyTorch** models. Each model is automatically exposed as its own endpoint, allowing clients to send input data and receive predictions in JSON format.
 
 
 ## Features
@@ -14,6 +14,9 @@ A Flask-based REST API for serving machine learning models dynamically. So far, 
 - **TF Serving integration**  
   SavedModel folders are automatically served via individual Docker containers running TensorFlow Serving. Flask endpoints proxy requests to the corresponding TF Serving URL.
 
+- **PyTorch folder-based models**  
+  Drop-in folders containing `model.pt` (or `.pth`) and `model_class.py` are supported. The API dynamically loads the class and weights.
+
 - **File stability check**  
   Ensures a model file/folder is fully written before loading it, preventing `PermissionError`.
 
@@ -21,6 +24,7 @@ A Flask-based REST API for serving machine learning models dynamically. So far, 
   - Scikit-learn models (`.pkl`, `.joblib`)  
   - TensorFlow/Keras models (`.h5`)  
   - TensorFlow SavedModels (`./models/model_name/version/saved_model.pb`) served via TF Serving
+  - PyTorch folder-based models (`model.pt` + `model_class.py`)
 
 - **Model info introspection**  
   Provides input shape and expected data type for each local model.  
@@ -56,8 +60,21 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. Place your models in the `models/` folder.
+4. Place your models in the `models/` folder. Examples:
+```bash
+models/
+│
+├── fire_nn/                # TensorFlow Keras .h5 model
+│   └── fire_nn.h5
+│
+├── fire_savedmodel/        # TensorFlow SavedModel folder
+│   └── 1/saved_model.pb
+│
+└── fire_pytorch/           # PyTorch folder-based model
+    ├── model.pt
+    └── model_class.py
 
+```
 
 
 ## Usage
