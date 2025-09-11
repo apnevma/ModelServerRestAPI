@@ -1,9 +1,12 @@
+import importlib.util
+import sys
 import torch
+from pathlib import Path
 from flask import jsonify
 from utils import wait_until_stable
 
 
-def load_pytorch(model_path):
+def load_pytorch_file(model_path):
     # Wait until file is fully written before loading
     if wait_until_stable(model_path):
         print(f"File {model_path} is stable, loading model...")
@@ -16,6 +19,41 @@ def load_pytorch(model_path):
         return None, None
 
 
+def load_pytorch_folder(folder):
+    folder = Path(folder)
+    model_file = folder / "model.pt"
+    class_file = folder / "model_class.py"
+
+    # --- Dynamically import module ---
+    spec = importlib.util.spec_from_file_location("model_class", class_file)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["model_class"] = module
+    spec.loader.exec_module(module)
+
+    # --- Find the first nn.Module subclass dynamically ---
+    import torch.nn as nn
+    ModelClass = None
+    for name, obj in vars(module).items():
+        if isinstance(obj, type) and issubclass(obj, nn.Module) and obj is not nn.Module:
+            ModelClass = obj
+            break
+
+    if ModelClass is None:
+        raise ValueError("No nn.Module subclass found in model_class.py")
+
+    # --- Instantiate + load weights ---
+    model = ModelClass()
+    state_dict = torch.load(model_file, map_location="cpu", weights_only=True)
+    model.load_state_dict(state_dict)
+    model.eval()
+    info = get_pytorch_model_info(model)
+
+    # --- Info extraction (input/output shapes if possible) ---
+    info = get_pytorch_model_info(model)
+
+    return info, model
+
+# model.pt has to be state_dict
 def get_pytorch_model_info(model):
     try:
         example_input = torch.randn(1, *list(model.parameters())[0].shape[1:])

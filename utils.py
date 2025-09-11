@@ -2,7 +2,6 @@ import numpy as np
 import torch
 import os
 import time
-import tf_keras     # legacy shim for tf.keras
 
 
 
@@ -129,19 +128,3 @@ def transform_to_friendly_inputs(metadata):
     return friendly_inputs
 
 
-# Convert SavedModel to .keras file
-def convert_savedmodel(input_dir: str):
-    if not os.path.isdir(input_dir):
-        raise ValueError(f"{input_dir} is not a valid directory.")
-
-    # Generate output filename
-    output_file = "./models/fire_nn_converted.keras"
-
-    print(f"[INFO] Loading SavedModel from {input_dir} ...")
-    model = tf_keras.models.load_model(input_dir)
-
-    print(f"[INFO] Saving converted model to {output_file} ...")
-    model.save(output_file)
-
-    print("[DONE] Conversion successful!")
-    return output_file
