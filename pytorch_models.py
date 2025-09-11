@@ -86,4 +86,4 @@ def predict_pytorch(model, input_data):
 
     # Convert predictions to JSON
     response = {"predictions": output.tolist()}
-    return jsonify(response)
+    return response
