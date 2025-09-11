@@ -2,3 +2,5 @@ models/
 .idea/
 venv/
 __pycache__/
+
+.tfserving_registry.json
