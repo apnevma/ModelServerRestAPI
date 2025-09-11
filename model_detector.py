@@ -19,12 +19,13 @@ def switch_case_load(filename):
         info, model = scikit_models.load_joblib(filename)
 
     elif extension in ['.pt', '.pth']:
+        # raw torch.save(model) format (class must exist)
         print("Processing model from PyTorch")
-        model = pytorch_models.load_pt(filename)
+        model = pytorch_models.load_pytorch(filename)
 
     elif extension == '.params':
         print("Processing model from MXNet")
-        # model = model_mxnet.load_params(filename)
+        # info, model = model_mxnet.load_params(filename)
 
     elif os.path.isdir(filename):
         # SavedModel → TF Serving
@@ -51,7 +52,7 @@ def switch_case_predict(filename, model, data):
     elif extension in ['.pkl', '.joblib']:
         prediction = scikit_models.predict_joblib(model, data)
     elif extension in ['.pt', '.pth']:
-        prediction = pytorch_models.predict_pt(model, data)
+        prediction = pytorch_models.predict_pytorch(model, data)
 
     return prediction
 
