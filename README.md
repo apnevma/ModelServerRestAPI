@@ -64,12 +64,15 @@ pip install -r requirements.txt
 ```bash
 models/
 │
-├── fire_nn/                # TensorFlow Keras .h5 model
-│   └── fire_nn.h5
+├── rf_model.pkl            # Scikit Learn .pkl model
 │
 ├── fire_savedmodel/        # TensorFlow SavedModel folder
-│   └── 1/saved_model.pb
-│
+│   └── 1/
+│       ├── assets/
+│       ├── variables/
+│       ├── fingerprint.pb
+│       └── saved_model.pb
+│   
 └── fire_pytorch/           # PyTorch folder-based model
     ├── model.pt
     └── model_class.py
