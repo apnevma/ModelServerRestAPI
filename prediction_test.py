@@ -5,7 +5,7 @@ url = "http://localhost:8086/fire_nn"
 
 # Example input data (features = [temperature, humidity, soundLevel])
 data = {
-    "input": [[70.5, 20.0, 76.0]]
+    "input": [[70.5, 20.0, 30.5]]
 }
 
 try:

@@ -18,7 +18,8 @@ def load_savedmodel(model_folder):
         raise ValueError(f"No valid SavedModel found inside {model_folder}")
 
     model_name = os.path.basename(model_folder.rstrip("/\\"))
-    model_abs = os.path.abspath(model_folder)
+    # model_abs = os.path.abspath(model_folder)
+    model_abs = os.path.abspath(f"./models/{model_name}")
     
     info = ensure_container(model_name, model_abs)  # starts/returns container
     model_info = {
