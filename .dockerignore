@@ -1,0 +1,7 @@
+# Do not copy models/ folder
+models/
+
+venv/
+__pycache__/
+*.pyc
+*.pyo

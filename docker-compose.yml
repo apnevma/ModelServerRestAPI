@@ -1,0 +1,14 @@
+services:
+  flask_api:
+    build: .
+    container_name: model_server_api
+    ports:
+      - "8086:8086"
+    networks:
+      - model_server_net
+    environment:
+      - REGISTRY=/app/.tfserving_registry.json
+
+networks:
+  model_server_net:
+    external: true      
