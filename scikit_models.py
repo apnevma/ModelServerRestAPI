@@ -38,6 +38,7 @@ def get_scikit_model_info(model):
 
 
 def predict_joblib(model, input_data):
+    print("Going to predict with data:", input_data)
     # Perform prediction using the loaded model
     prediction = model.predict(input_data)[0]
 

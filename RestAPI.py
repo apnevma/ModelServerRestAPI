@@ -30,6 +30,16 @@ def initialize_endpoints():
 
         create_endpoint(file_path)
 
+    # Print endpoints
+    print("=== Registered Endpoints ===")
+    for ep, func in endpoints.items():
+        print(ep, "->", func)
+    # Print Flask URL rules
+    print("=== Flask URL Rules ===")
+    for rule in app.url_map.iter_rules():
+        print(rule, "->", app.view_functions[rule.endpoint])
+
+
 
 class MyHandler(FileSystemEventHandler):
     def on_created(self, event):
@@ -52,7 +62,7 @@ def create_endpoint(file_path):
     filename, extension = os.path.splitext(endpoint_path)
     endpoint = '/' + filename.replace(os.path.sep, '/')
 
-    print("What I pass in model_detector.detect():", os.path.join(folder_to_monitor, endpoint_path))
+
     model_info, model = model_detector.detect(os.path.join(folder_to_monitor, endpoint_path))
 
     if model is not None:
@@ -63,7 +73,8 @@ def create_endpoint(file_path):
             features = data["input"]
 
             try:
-                result = model_detector.predict(folder_to_monitor + endpoint_path, model, features)
+                print("What I pass in model_detector.predict():", os.path.join(folder_to_monitor, endpoint_path))
+                result = model_detector.predict(os.path.join(folder_to_monitor, endpoint_path), model, features)
 
                 # If TF Serving, unwrap the 'predictions' key
                 if isinstance(result, dict) and "predictions" in result:
@@ -106,5 +117,4 @@ if __name__ == '__main__':
     initialize_endpoints()
     start_monitoring()
     # Run the Flask app on port
-    # app.run(host='0.0.0.0', port=PORT)
-    app.run(port=PORT)      # run locally
+    app.run(host='0.0.0.0', port=PORT)

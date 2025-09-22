@@ -45,7 +45,6 @@ def switch_case_load(path):
             )
             if version_dirs:
                 latest_version = version_dirs[-1]  # pick highest version
-                version_path = os.path.join(path, latest_version)
                 print(f"Processing TensorFlow SavedModel (TF Serving format), version={latest_version}")
                 info, model = savedmodel.load_savedmodel(path)
         
@@ -80,6 +79,7 @@ def switch_case_predict(path, model, data):
         if extension in ['.h5', '.keras']:
             prediction = tensorflow_models.predict_tensorflow(model, data)
         elif extension in ['.pkl', '.joblib']:
+            print("Hit .pkl extension branch!")
             prediction = scikit_models.predict_joblib(model, data)
         elif extension in ['.pt', '.pth']:
             prediction = pytorch_models.predict_pytorch(model, data)
