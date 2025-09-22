@@ -1,7 +1,7 @@
 import requests
 
 # URL of local model endpoint
-url = "http://localhost:8086/fire_nn"
+url = "http://127.0.0.1:8086/rf_model"
 
 # Example input data (features = [temperature, humidity, soundLevel])
 data = {

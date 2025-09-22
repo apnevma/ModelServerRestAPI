@@ -1,5 +1,6 @@
-import os, socket, time, json, requests, docker
+import time, json, requests, docker
 from pathlib import Path
+
 
 
 LABEL_KEY = "project"
@@ -21,7 +22,7 @@ def _container_name(model_name):
     return f"tf_{model_name}"
 
 
-def ensure_container(model_name: str, model_abs_path: str, timeout=60):
+def ensure_container(model_name: str, model_subdir: str, timeout=60):
     """
     Starts a TF Serving container for the given model if not already running.
     Uses Docker network only, no host port binding.
@@ -45,10 +46,12 @@ def ensure_container(model_name: str, model_abs_path: str, timeout=60):
     except docker.errors.NotFound:
         pass
 
-    # Mount model folder as read-only
+    # Mount the same named volume that docker-compose created
     volumes = {
-        model_abs_path: {"bind": f"/models/{model_name}", "mode": "ro"}
+        "modelserverrestapi_models_data": {"bind": "/models", "mode": "rw"}
     }
+
+    model_base_path = f"/models/{model_subdir}"  # path inside container
 
     # Start container on Docker network (no host port mapping)
     container = client.containers.run(
@@ -59,7 +62,7 @@ def ensure_container(model_name: str, model_abs_path: str, timeout=60):
         volumes=volumes,
         network="model_server_net",  # Flask can reach it via container name
         labels={LABEL_KEY: LABEL_VAL, "model_name": model_name},
-        command=f"--model_base_path=/models/{model_name} --rest_api_port=8501 --port=8500"
+        command=f"--model_base_path={model_base_path} --rest_api_port=8501 --port=8500"
     )
 
     # Wait until model is available

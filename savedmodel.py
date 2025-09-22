@@ -1,10 +1,12 @@
 import os
+from pathlib import Path
 import requests
 from tf_serving_manager import ensure_container
 from utils import find_latest_saved_model_folder, wait_until_stable, transform_to_friendly_inputs
-from flask import jsonify
+
 
 def load_savedmodel(model_folder):
+    print("model_folder:", model_folder)
     # Wait until file is fully written before loading
     if wait_until_stable(model_folder):
         print(f"Folder {model_folder} is stable, loading SavedModel folder...")
@@ -17,17 +19,21 @@ def load_savedmodel(model_folder):
     if latest_folder is None:
         raise ValueError(f"No valid SavedModel found inside {model_folder}")
 
+    # Use the folder name as the model name
     model_name = os.path.basename(model_folder.rstrip("/\\"))
-    # model_abs = os.path.abspath(model_folder)
-    model_abs = os.path.abspath(f"./models/{model_name}")
+
+    # 👉 Instead of passing full /models/... path, just pass subdir
+    model_subdir = model_name
+    print("✅ model_subdir:", model_subdir)
+
+    info = ensure_container(model_name, model_subdir)
     
-    info = ensure_container(model_name, model_abs)  # starts/returns container
     model_info = {
         "type": "TensorFlow (TF Serving, per-model container)",
         "model_name": model_name,
         "serving_url": info["serving_url"],
         "status_url": info["status_url"],
-        "host_port": info["host_port"],
+        #"host_port": info["host_port"],
         "note": "I/O schema not introspected; use metadata"
     }
     return model_info, info["serving_url"]

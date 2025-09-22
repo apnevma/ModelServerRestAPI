@@ -7,11 +7,16 @@ services:
     networks:
       - model_server_net
     environment:
+      - MODELS_PATH=/models    # path inside container
       - REGISTRY=/app/.tfserving_registry.json
     volumes:
-      - ./models:/app/models   # mount host models/ folder
+      - models_data:/models                     # mount named volume for models/
       - /var/run/docker.sock:/var/run/docker.sock   # gives docker access to my pyhton code (tfserving_manager.py)
     restart: unless-stopped
+
+
+volumes:
+  models_data:                                  # declare named volume 
 
 networks:
   model_server_net:

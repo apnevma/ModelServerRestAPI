@@ -11,9 +11,10 @@ PORT = 8086
 
 app = Flask(__name__)
 
-# Define the folder to monitor
-folder_to_monitor = "./models/"
-
+# Define the folder to monitor (with fallback if docker environment variable is not set)
+folder_to_monitor = os.environ.get("MODELS_PATH", "./models")
+print("folder_to_monitor:", folder_to_monitor)
+print("folder_to_monitor contents:", os.listdir(folder_to_monitor))
 # Dictionary to store endpoints for each file
 endpoints = {}
 
@@ -24,6 +25,8 @@ def initialize_endpoints():
     # Loop through each file in the folder
     for filename in os.listdir(folder_to_monitor):
         file_path = os.path.join(folder_to_monitor, filename)
+
+        print(f"file_path for filename {filename}:", file_path)
 
         create_endpoint(file_path)
 
@@ -49,7 +52,8 @@ def create_endpoint(file_path):
     filename, extension = os.path.splitext(endpoint_path)
     endpoint = '/' + filename.replace(os.path.sep, '/')
 
-    model_info, model = model_detector.detect(folder_to_monitor + endpoint_path)
+    print("What I pass in model_detector.detect():", os.path.join(folder_to_monitor, endpoint_path))
+    model_info, model = model_detector.detect(os.path.join(folder_to_monitor, endpoint_path))
 
     if model is not None:
         print("Model info for", filename + ":", model_info)

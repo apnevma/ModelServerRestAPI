@@ -4,7 +4,6 @@ import os
 import time
 
 
-
 def make_json_serializable(obj):
     """
     Recursively convert objects to JSON-serializable types.
@@ -126,5 +125,4 @@ def transform_to_friendly_inputs(metadata):
         }
 
     return friendly_inputs
-
 
