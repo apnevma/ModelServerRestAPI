@@ -12,6 +12,8 @@ services:
     volumes:
       - models_data:/models                     # mount named volume for models/
       - /var/run/docker.sock:/var/run/docker.sock   # gives docker access to my pyhton code (tfserving_manager.py)
+    labels:
+      project: ModelServerREST
     restart: unless-stopped
 
 

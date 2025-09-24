@@ -3,9 +3,10 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from flask_cors import cross_origin
 import os
+import signal, sys
 
 # Local imports
-import model_detector
+import model_detector, tf_serving_manager
 
 PORT = 8086
 
@@ -111,6 +112,19 @@ def start_monitoring():
     observer = Observer()
     observer.schedule(event_handler, path=folder_to_monitor, recursive=True)
     observer.start()
+
+def cleanup(signum, frame):
+    print("Stopping all TF Serving containers...")
+    for c in tf_serving_manager.list_managed_containers():
+        try:
+            print(f"Stopping {c.name}...")
+            c.remove(force=True)
+        except Exception as e:
+            print(f"Failed to stop {c.name}: {e}")
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, cleanup)
+signal.signal(signal.SIGINT, cleanup)
 
 
 if __name__ == '__main__':

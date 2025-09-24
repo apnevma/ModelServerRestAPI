@@ -61,7 +61,11 @@ def ensure_container(model_name: str, model_subdir: str, timeout=60):
         environment={"MODEL_NAME": model_name},
         volumes=volumes,
         network="model_server_net",  # Flask can reach it via container name
-        labels={LABEL_KEY: LABEL_VAL, "model_name": model_name},
+        labels={
+            LABEL_KEY: LABEL_VAL,
+            "com.docker.compose.project": "modelserverrestapi",
+            "model_name": model_name
+            },
         command=f"--model_base_path={model_base_path} --rest_api_port=8501 --port=8500"
     )
 
@@ -90,7 +94,6 @@ def ensure_container(model_name: str, model_subdir: str, timeout=60):
     # Cleanup if not available in time
     container.remove(force=True)
     raise RuntimeError(f"TF Serving for '{model_name}' did not become AVAILABLE in {timeout}s.")
-
 
 
 def stop_container(model_name: str):
