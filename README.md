@@ -1,7 +1,10 @@
 # ModelServer REST API
 
-A Flask-based REST API for dynamically serving machine learning models. Supports **Scikit-learn**, **TensorFlow/Keras**, **TensorFlow SavedModels**, and **PyTorch** models. Each model is automatically exposed as its own endpoint, allowing clients to send input data and receive predictions in JSON format.
+A Flask-based REST API for dynamically serving machine learning models. Supports **Scikit-learn**, **TensorFlow/Keras**, **TensorFlow SavedModels**, and **PyTorch** models. Each model is automatically exposed as its own endpoint, allowing clients to send input data and receive predictions in JSON format.  
 
+Now fully **Dockerized**:
+* One container for the API (`model_server_api`)
+* One TF Serving container per TensorFlow SavedModel
 
 ## Features
 
@@ -46,21 +49,7 @@ git clone <repo_url>
 cd ModelServerrRestAPI
 ```
 
-2. Create a Python virtual environment and activate it:
-```bash
-python -m venv venv
-# Windows
-venv\Scripts\activate
-# macOS/Linux
-source venv/bin/activate
-```
-
-3. Install requirements:
-```bash
-pip install -r requirements.txt
-```
-
-4. Place your models in the `models/` folder. Examples:
+2. Create a `models/` folder and place your models in it. Examples:
 ```bash
 models/
 │
@@ -78,6 +67,23 @@ models/
     └── model_class.py
 
 ```
+## Docker Setup
+
+1. Make sure you have Docker and Docker Compose installed and running on your machine.
+
+2. Create Docker network  
+  All containers communicate via a dedicated network:
+    ```bash
+    docker network create model_server_net
+    ```
+
+3. Build and start containers
+    ```bash
+    docker-compose up -d --build
+    ```
+    * model_server_api detects all models and exposes endpoints.
+    * Each TensorFlow SavedModel is served via its own TF Serving container automatically.
+    * Communication is internal via Docker network. No extra ports needed for TF Serving containers.
 
 
 ## Usage
