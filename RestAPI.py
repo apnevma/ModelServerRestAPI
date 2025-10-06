@@ -1,9 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from flask_cors import cross_origin
 import os
 import signal, sys
+import json
 
 # Local imports
 import model_detector, tf_serving_manager
@@ -16,8 +17,11 @@ app = Flask(__name__)
 folder_to_monitor = os.environ.get("MODELS_PATH", "./models")
 print("folder_to_monitor:", folder_to_monitor)
 print("folder_to_monitor contents:", os.listdir(folder_to_monitor))
+
 # Dictionary to store endpoints for each file
 endpoints = {}
+# Store extra metadata for help endpoint
+models_info = {}
 
 model_types = {'type1': 'h5', 'type2': 'pkl', 'type3': 'joblib', 'type4': 'pt', 'type5': 'params'}
 
@@ -69,6 +73,13 @@ def create_endpoint(file_path):
     if model is not None:
         print("Model info for", filename + ":", model_info)
 
+        # Store model metadata for /help
+        models_info[endpoint] = {
+            "model_name": filename,
+            "endpoint": endpoint,
+            "model_info": model_info
+        }
+
         def predict():
             data = request.get_json()
             features = data["input"]
@@ -105,6 +116,18 @@ def create_endpoint(file_path):
 @app.route('/test')
 def test_endpoint():
     return 'The Model Server is ALIVE!'
+
+
+@app.route('/help')
+def help_endpoint():
+    if not models_info:
+        return jsonify({"message": "No models currently loaded."})
+
+    loaded_models = {
+        "available_models": list(models_info.values())
+    }
+    return Response(json.dumps(loaded_models, indent=4),
+                    content_type="application/json")
 
 
 def start_monitoring():
