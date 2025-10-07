@@ -76,7 +76,7 @@ def create_endpoint(file_path):
         # Store model metadata for /help
         models_info[endpoint] = {
             "model_name": filename,
-            "endpoint": endpoint,
+            "endpoint url": f"http://168.119.235.102:8086{endpoint}", 
             "model_info": model_info
         }
 
@@ -127,7 +127,8 @@ def help_endpoint():
         "message": (
             "Below are all the available models loaded from the models/ folder. "
             "To add new models, simply drop them into that folder and the system "
-            "will automatically detect and expose them."
+            "will automatically detect and expose them. "
+            "Use the endpoint URL shown for each model to make prediction requests via the Datacrop VM."
         ),
         "available_models": list(models_info.values())
     }
