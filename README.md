@@ -45,7 +45,7 @@ A **web-based Help page** is now available to easily browse all loaded models an
 
 ### Access it 
 
-- **Locally**  
+- **Locally** (after following the installation and usage instructions)  
   [http://localhost:8086/help/ui](http://localhost:8086/help/ui)
 
 - **Or through the Datacrop VM**  
