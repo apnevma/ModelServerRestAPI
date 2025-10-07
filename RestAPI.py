@@ -122,12 +122,21 @@ def test_endpoint():
 def help_endpoint():
     if not models_info:
         return jsonify({"message": "No models currently loaded."})
-
-    loaded_models = {
+    
+    response_data = {
+        "message": (
+            "Below are all the available models loaded from the models/ folder. "
+            "To add new models, simply drop them into that folder and the system "
+            "will automatically detect and expose them."
+        ),
         "available_models": list(models_info.values())
     }
-    return Response(json.dumps(loaded_models, indent=4),
-                    content_type="application/json")
+
+    # Pretty-print in JSON
+    return Response(
+        json.dumps(response_data, indent=4),
+        content_type="application/json"
+    )
 
 
 def start_monitoring():
