@@ -45,8 +45,7 @@ def load_savedmodel(model_folder, version):
         "model_name": model_name,
         "signatures": signatures,
         "inputs": input_info,
-        "outputs": output_info,
-        "serving_url": info["serving_url"]
+        "outputs": output_info
     }
 
     return model_info, info["serving_url"]
