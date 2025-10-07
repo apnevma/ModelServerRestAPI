@@ -1,92 +1,83 @@
 body {
-  font-family: Arial, sans-serif;
-  background: #f3f9fcb9;
+  background: linear-gradient(135deg, #f5f7fa, #e3e8f0);
+  font-family: "Inter", Arial, sans-serif;
+  color: #333;
 }
 
 h1 {
-  text-align: center;
-  margin-top: 30px;
-  font-size: 2rem;
-  color: #333;
-}
-
-.help-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 60px 60px; /* adds space from screen edges */
-  background-color: #f3f9fc00; /* subtle background */
+  font-size: 2.2rem;
+  color: #222;
 }
 
 .help-description {
-  text-align: left;
-  max-width: 1100px;
-  margin: 0 auto 2rem auto;
+  max-width: 800px;
+  margin: 0 auto;
   font-size: 1.05rem;
   line-height: 1.6;
-  color: #333;
+  color: #555;
 }
 
-/* multiple cards side by side */
-.card-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: left;
-  gap: 50px;
-  padding: 20px;
-}
-
-.card {
-  position: relative;
-  width: 300px;
-  height: 200px;
+/* Flip card container */
+.flip-card {
+  background-color: transparent;
+  width: 100%;
+  height: 250px;
   perspective: 1000px;
 }
 
-.card-inner {
-  position: absolute;
+/* Flip card inner container */
+.flip-card-inner {
+  position: relative;
   width: 100%;
   height: 100%;
   transition: transform 0.6s;
   transform-style: preserve-3d;
-  cursor: pointer;
 }
 
-.card-inner.flipped {
+/* Flip on click */
+.flip-card-inner.flipped {
   transform: rotateY(180deg);
 }
 
-.card-front,
-.card-back {
+/* Front and back faces */
+.flip-card-front,
+.flip-card-back {
   position: absolute;
   width: 100%;
   height: 100%;
-  backface-visibility: hidden;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  background-color: #ffffff;
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  backface-visibility: hidden;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  overflow: hidden;
 }
 
-/* Back face properly aligned */
-.card-back {
+.flip-card-front {
+  background: #fff;
+}
+
+.flip-card-back {
+  background: #fafafa;
   transform: rotateY(180deg);
-  background-color: #f0f0f0;
-  font-size: 13px;
-  overflow-y: auto;
 }
 
-/* Center only the model title */
-.card-title {
-  font-weight: bold;
-  font-size: 18px;
-  text-align: center;
-  margin-bottom: 10px;
+/* Pretty preformatted JSON */
+pre {
+  font-size: 0.8rem;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 120px;
 }
 
-.card-info {
-  font-size: 14px;
-  text-align: left;
+/* Hover effects */
+.flip-card:hover .flip-card-front {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Smooth spacing */
+.row {
+  row-gap: 2rem;
 }

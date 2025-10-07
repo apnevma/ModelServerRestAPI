@@ -41,7 +41,7 @@ def load_savedmodel(model_folder, version):
         return {"error": str(e)}    
     
     model_info = {
-        "type": "TensorFlow SavedModel (TF Serving, per-model container)",
+        "type": "TensorFlow SavedModel",
         "model_name": model_name,
         "signatures": signatures,
         "inputs": input_info,
