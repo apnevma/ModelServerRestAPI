@@ -4,5 +4,6 @@ __pycache__/
 
 models/*
 !models/rf_model.pkl
+!models/fire_nn
 
 .tfserving_registry.json
