@@ -40,6 +40,22 @@ Now fully **Dockerized**:
   Easy integration with web clients.
 
 
+## Interactive Help Page (UI)
+A **web-based Help page** is now available to easily browse all loaded models and their endpoints.
+
+### Access it 
+
+- **Locally**  
+  [http://localhost:8086/help/ui](http://localhost:8086/help/ui)
+
+- **Or through the Datacrop VM**  
+  [http://168.119.235.102:8086/help/ui](http://168.119.235.102:8086/help/ui)
+
+### Features
+* Displays all detected models from the `/models/` directory
+* Flip-card design to show model name on front and endpoint on back
+* Descriptive text and clean layout
+* Responsive, modern UI (using custom CSS)
 
 ## Installation
 
