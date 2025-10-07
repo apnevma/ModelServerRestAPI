@@ -1,6 +1,6 @@
 import requests
 
-API_URL = "http://127.0.0.1:8086/help"
+API_URL = "http://168.119.235.102:8086/help"
 
 def test_help():
     try:
