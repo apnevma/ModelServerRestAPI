@@ -1,0 +1,92 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f3f9fcb9;
+}
+
+h1 {
+  text-align: center;
+  margin-top: 30px;
+  font-size: 2rem;
+  color: #333;
+}
+
+.help-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 60px; /* adds space from screen edges */
+  background-color: #f3f9fc00; /* subtle background */
+}
+
+.help-description {
+  text-align: left;
+  max-width: 1100px;
+  margin: 0 auto 2rem auto;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #333;
+}
+
+/* multiple cards side by side */
+.card-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: left;
+  gap: 50px;
+  padding: 20px;
+}
+
+.card {
+  position: relative;
+  width: 300px;
+  height: 200px;
+  perspective: 1000px;
+}
+
+.card-inner {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+
+.card-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-front,
+.card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: #ffffff;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Back face properly aligned */
+.card-back {
+  transform: rotateY(180deg);
+  background-color: #f0f0f0;
+  font-size: 13px;
+  overflow-y: auto;
+}
+
+/* Center only the model title */
+.card-title {
+  font-weight: bold;
+  font-size: 18px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.card-info {
+  font-size: 14px;
+  text-align: left;
+}

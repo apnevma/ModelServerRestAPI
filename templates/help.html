@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Available Models</title>
+    <link rel="stylesheet" href="/static/css/help.css">
+</head>
+<body>
+    <h1>Available Models</h1>
+    <div class="help-container">
+        <p class="help-description">
+            Below are all the available models loaded from the <code>models/</code> folder.<br>
+            To add new models, simply drop them into that folder and the system will automatically detect and expose them.<br>
+            Use the endpoint URL shown for each model to make prediction requests via the Datacrop VM.
+        </p>
+        
+        <div class="card-container">
+            {% for model in models %}
+            <div class="card">
+                <div class="card-inner">
+                    <div class="card-front">
+                        <div class="card-title">{{ model.model_name }}</div>
+                        <div class="card-info">Type: {{ model.model_info.type }}</div>
+                        <div class="card-info">Endpoint URL: {{ model.endpoint_url }}</div>
+                    </div>
+                    <div class="card-back">
+                        <pre>{{ model.model_info | tojson(indent=2) }}</pre>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+<script src="/static/js/help.js"></script>
+</body>
+</html>

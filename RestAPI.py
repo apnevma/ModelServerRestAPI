@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, render_template
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from flask_cors import cross_origin
@@ -76,7 +76,7 @@ def create_endpoint(file_path):
         # Store model metadata for /help
         models_info[endpoint] = {
             "model_name": filename,
-            "endpoint url": f"http://168.119.235.102:8086{endpoint}", 
+            "endpoint_url": f"http://168.119.235.102:8086{endpoint}", 
             "model_info": model_info
         }
 
@@ -138,6 +138,12 @@ def help_endpoint():
         json.dumps(response_data, indent=4),
         content_type="application/json"
     )
+
+
+@app.route('/help/ui')
+def help_ui():
+    # Pass the models_info dictionary to the template
+    return render_template('help.html', models=list(models_info.values()))
 
 
 def start_monitoring():

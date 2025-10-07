@@ -7,8 +7,10 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy rest of project files, but exclude models/
+# Copy rest of project files
 COPY *.py ./
+COPY templates/ /app/templates/
+COPY static/ /app/static/
 
 # Copy all models into the container
 COPY /models /models
