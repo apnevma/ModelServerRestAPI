@@ -46,7 +46,7 @@ def switch_case_load(path):
             if version_dirs:
                 latest_version = version_dirs[-1]  # pick highest version
                 print(f"Processing TensorFlow SavedModel (TF Serving format), version={latest_version}")
-                info, model = savedmodel.load_savedmodel(path)
+                info, model = savedmodel.load_savedmodel(path, latest_version)
         
 
         elif (os.path.exists(os.path.join(path, "model.pt")) or
