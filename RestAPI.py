@@ -117,7 +117,7 @@ def create_endpoint(file_path):
 def test_endpoint():
     return 'The Model Server is ALIVE!'
 
-
+# Help endpoint to provide info for all the available models
 @app.route('/help')
 def help_endpoint():
     if not models_info:
@@ -142,8 +142,8 @@ def help_endpoint():
 
 @app.route('/help/ui')
 def help_ui():
-    # Pass the models_info dictionary to the template
-    return render_template('help.html', models=list(models_info.values()))
+    models = list(models_info.values())
+    return render_template('help.html', models=models)
 
 
 def start_monitoring():
