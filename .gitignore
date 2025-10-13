@@ -5,5 +5,6 @@ __pycache__/
 models/*
 !models/rf_model.pkl
 !models/fire_nn
+!models/model_license_6m_delay_0m_outcome_1m_nn.keras
 
 .tfserving_registry.json
