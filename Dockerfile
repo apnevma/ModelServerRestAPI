@@ -13,7 +13,7 @@ COPY templates/ /app/templates/
 COPY static/ /app/static/
 
 # Copy all models into the container
-COPY /models /models
+COPY models/ /models/
 
 EXPOSE 8086
 

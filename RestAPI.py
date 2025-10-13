@@ -23,8 +23,6 @@ endpoints = {}
 # Store extra metadata for help endpoint
 models_info = {}
 
-model_types = {'type1': 'h5', 'type2': 'pkl', 'type3': 'joblib', 'type4': 'pt', 'type5': 'params'}
-
 
 def initialize_endpoints():
     # Loop through each file in the folder

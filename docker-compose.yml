@@ -16,6 +16,21 @@ services:
       project: ModelServerREST
     restart: unless-stopped
 
+  model_syncer:
+    build:
+      context: ./syncer
+      dockerfile: syncer.Dockerfile
+    container_name: model_syncer
+    volumes:
+      - ./models:/local_models   # Host folder (read-only inside container)
+      - models_data:/models         # Shared named volume
+    #restart: unless-stopped
+    networks:
+      - model_server_net
+    working_dir: /syncer
+    depends_on:
+      - flask_api
+
 
 volumes:
   models_data:                                  # declare named volume 
