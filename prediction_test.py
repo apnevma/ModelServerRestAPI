@@ -1,7 +1,7 @@
 import requests
 
 # URL of local model endpoint
-url = "http://168.119.235.102:8086/rf_model"
+url = "http://168.119.235.102:8086/predict/rf_model"
 
 # Example input data (features = [temperature, humidity, soundLevel])
 data = {
