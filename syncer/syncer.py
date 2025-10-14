@@ -28,20 +28,30 @@ class SyncHandler(FileSystemEventHandler):
         dst = os.path.join(DST, os.path.basename(event.src_path))
         try:
             if os.path.exists(dst):
-                os.remove(dst)
-                logging.info(f"[DELETED] {dst} removed")
+                if os.path.isdir(dst):
+                    shutil.rmtree(dst)
+                    logging.info(f"[DELETED] Directory {dst} removed")
+                else:
+                    os.remove(dst)
+                    logging.info(f"[DELETED] File {dst} removed")
         except Exception as e:
             logging.error(f"[ERROR][DELETED] Failed to remove {dst}: {e}")
 
     def handle_event(self, event, event_type):
         logging.info("Inside handle_event!")
-        if event.is_directory:
-            return
         src = event.src_path
         dst = os.path.join(DST, os.path.basename(src))
+
         try:
-            shutil.copy(src, dst)
-            logging.info(f"[{event_type}] Copied {src} → {dst}")
+            if event.is_directory:
+                # If directory exists at destination, remove it first
+                if os.path.exists(dst):
+                    shutil.rmtree(dst)
+                shutil.copytree(src, dst)
+                logging.info(f"[{event_type}] Directory copied {src} → {dst}")
+            else:
+                shutil.copy(src, dst)
+                logging.info(f"[{event_type}] File copied {src} → {dst}")
         except Exception as e:
             logging.error(f"[{event_type}] Failed to copy {src} → {dst}: {e}")
 
