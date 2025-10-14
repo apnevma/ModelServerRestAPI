@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify, Response, render_template
-from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver as Observer
 from watchdog.events import FileSystemEventHandler
 from flask_cors import cross_origin
 import os
 import signal, sys
 import json
+from threading import Thread
+
 
 # Local imports
 import model_detector, tf_serving_manager
@@ -33,10 +35,10 @@ def initialize_endpoints():
 
         create_endpoint(file_path)
 
-    # Print endpoints
+    # Print models in models_info
     print("=== Registered Endpoints ===")
-    for ep, func in endpoints.items():
-        print(ep, "->", func)
+    for endpoint in models_info:
+        print(endpoint)
     # Print Flask URL rules
     print("=== Flask URL Rules ===")
     for rule in app.url_map.iter_rules():
@@ -44,101 +46,106 @@ def initialize_endpoints():
 
 
 class MyHandler(FileSystemEventHandler):
-    def on_created(self, event):
-        if event.event_type != 'created':
-            return
+    
+    def __init__(self):
+        super().__init__()
+        # Keep track of models currently registered
+        self.registered_models = set(os.listdir(folder_to_monitor))
 
-        file_path = event.src_path
+    def on_any_event(self, event):
+        # Ignore the root folder itself
+        if os.path.abspath(event.src_path) == os.path.abspath(folder_to_monitor):
+            self.resync_models()
+        else:
+            # Any event inside the folder triggers a resync
+            self.resync_models()
 
-        # Ignore subdirectories inside a model folder -> only the root folder gets passed inside create_endpoint
-        rel_path = os.path.relpath(file_path, folder_to_monitor)
-        parts = rel_path.split(os.sep)
-        if len(parts) > 1:  # "fire_nn/1" → ignore
-            return
+    def resync_models(self):
+        current_models = set(os.listdir(folder_to_monitor))
+        previous_models = self.registered_models
 
-        create_endpoint(file_path)
+        # Detect added models
+        for model in current_models - previous_models:
+            path = os.path.join(folder_to_monitor, model)
+            print(f"[WATCHDOG][CREATED] {path}")
+            create_endpoint(path)
+
+        # Detect removed models
+        for model in previous_models - current_models:
+            path = os.path.join(folder_to_monitor, model)
+            print(f"[WATCHDOG][DELETED] {path}")
+            delete_endpoint(path)
+
+        # Update the registered models set
+        self.registered_models = current_models
+
 
 
 def create_endpoint(file_path):
+    """
+    Registers a model in the internal registry.
+    """
     endpoint_path = os.path.relpath(file_path, folder_to_monitor)
     filename, extension = os.path.splitext(endpoint_path)
-    endpoint = '/' + filename.replace(os.path.sep, '/')
-
+    endpoint = filename.replace(os.path.sep, '/')  # just store name, no leading /
 
     model_info, model = model_detector.detect(os.path.join(folder_to_monitor, endpoint_path))
 
     if model is not None:
-        print("Model info for", filename + ":", model_info)
-
-        # Store model metadata for /help
+        print(f"[+] Model detected: {filename}")
+        # Store everything needed for dynamic prediction
         models_info[endpoint] = {
             "model_name": filename,
-            "endpoint_url": f"http://168.119.235.102:8086{endpoint}", 
+            "model_path": os.path.join(folder_to_monitor, endpoint_path),
+            "model": model,
             "model_info": model_info
         }
-
-        def predict():
-            data = request.get_json()
-            features = data["input"]
-
-            try:
-                print("What I pass in model_detector.predict():", os.path.join(folder_to_monitor, endpoint_path))
-                result = model_detector.predict(os.path.join(folder_to_monitor, endpoint_path), model, features)
-
-                # If TF Serving, unwrap the 'predictions' key
-                if isinstance(result, dict) and "predictions" in result:
-                    return jsonify({"prediction": result["predictions"]})
-                return jsonify({"prediction": result})
-            
-            except Exception as e:
-                return jsonify({
-                    "error": str(e),
-                    "expected_input": model_info
-                })
-
-        app.add_url_rule(
-            endpoint,                      # URL path (e.g., /fire_nn)
-            endpoint,                      # unique endpoint name
-            cross_origin()(predict),       # enable CORS
-            methods=['POST']
-        )
-
-        endpoints[endpoint] = predict
-        print("Created endpoint " + endpoint)
-
+        print(f"[+] Registered '{endpoint}' for dynamic prediction")
     else:
-        print(extension + " extension not supported!")
+        print(f"[!] Extension not supported: {extension}")
 
 
 def delete_endpoint(file_path):
+    """
+    Remove a model from the internal registry and Flask endpoints.
+    """
     endpoint_path = os.path.relpath(file_path, folder_to_monitor)
-    filename, extension = os.path.splitext(endpoint_path)
-    endpoint = '/' + filename.replace(os.path.sep, '/')
+    filename, _ = os.path.splitext(endpoint_path)
+    endpoint = filename.replace(os.path.sep, '/')
 
-    if endpoint not in endpoints:
-        print(f"Endpoint {endpoint} does not exist")
-        return
-    
-    # Remove from Flask routes
-    if endpoint in app.view_functions:
-        app.view_functions.pop(endpoint)
-        print(f"Removed Flask view function for {endpoint}")
-
-    if endpoint in endpoints:
-        endpoints.pop(endpoint)
-        print(f"Removed model info for {endpoint}")
-
+    # Remove from models_info
     if endpoint in models_info:
         models_info.pop(endpoint)
-        print(f"Removed model info for {endpoint}")
+        print(f"[-] Removed '{endpoint}' from registry")
+    else:
+        print(f"[!] Model '{endpoint}' not found in registry")    
 
-    # Remove route rule
-    rules_to_remove = [rule for rule in list(app.url_map.iter_rules()) if rule.rule == endpoint]
-    for rule in rules_to_remove:
-        app.url_map._rules.remove(rule)
-        app.url_map._rules_by_endpoint.pop(rule.endpoint, None)    
 
-    print(f"Deleted endpoint {endpoint}")
+@app.route("/predict/<model_name>", methods=["POST"])
+def dynamic_predict(model_name):
+    if model_name not in models_info:
+        return jsonify({"error": f"Model '{model_name}' not found"}), 404
+
+    model_entry = models_info[model_name]
+    features = request.get_json().get("input")
+
+    try:
+        result = model_detector.predict(
+            model_entry["model_path"],
+            model_entry["model"],
+            features
+        )
+
+        # If TF Serving, unwrap the 'predictions' key
+        if isinstance(result, dict) and "predictions" in result:
+            return jsonify({"prediction": result["predictions"]})
+        return jsonify({"prediction": result})
+
+    except Exception as e:
+        return jsonify({
+            "error": str(e),
+            "expected_input": model_entry["model_info"]
+        })
 
 
 @app.route('/test')
@@ -155,10 +162,16 @@ def help_endpoint():
         "message": (
             "Below are all the available models loaded from the models/ folder. "
             "To add new models, simply drop them into that folder and the system "
-            "will automatically detect and expose them. "
-            "Use the endpoint URL shown for each model to make prediction requests via the Datacrop VM."
+            "will automatically detect and expose them via the dynamic /predict/<model_name> endpoint."
         ),
-        "available_models": list(models_info.values())
+        "available_models": [
+            {
+                "model_name": info["model_name"],
+                "endpoint_url": f"http://168.119.235.102:8086/predict/{info['model_name']}",
+                "model_info": info["model_info"]
+            }
+            for info in models_info.values()
+        ]
     }
 
     # Pretty-print in JSON
@@ -168,9 +181,17 @@ def help_endpoint():
     )
 
 
+# Web-based UI for help
 @app.route('/help/ui')
 def help_ui():
-    models = list(models_info.values())
+    models = [
+        {
+            "model_name": info["model_name"],
+            "endpoint_url": f"/predict/{info['model_name']}",
+            "model_info": info["model_info"]
+        }
+        for info in models_info.values()
+    ]
     return render_template('help.html', models=models)
 
 
@@ -178,7 +199,10 @@ def start_monitoring():
     event_handler = MyHandler()
     observer = Observer()
     observer.schedule(event_handler, path=folder_to_monitor, recursive=True)
-    observer.start()
+    observer_thread = Thread(target=observer.start, daemon=True)
+    observer_thread.start()
+    print(f"[WATCHDOG] Monitoring '{folder_to_monitor}' for model changes...")
+
 
 def cleanup(signum, frame):
     print("Stopping all TF Serving containers...")
@@ -196,6 +220,6 @@ signal.signal(signal.SIGINT, cleanup)
 
 if __name__ == '__main__':
     initialize_endpoints()
-    start_monitoring()
-    # Run the Flask app on port
+    start_monitoring()       # Start the watchdog in the background
+
     app.run(host='0.0.0.0', port=PORT)
