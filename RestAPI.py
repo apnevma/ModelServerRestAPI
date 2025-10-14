@@ -43,7 +43,6 @@ def initialize_endpoints():
         print(rule, "->", app.view_functions[rule.endpoint])
 
 
-
 class MyHandler(FileSystemEventHandler):
     def on_created(self, event):
         if event.event_type != 'created':
@@ -109,6 +108,37 @@ def create_endpoint(file_path):
 
     else:
         print(extension + " extension not supported!")
+
+
+def delete_endpoint(file_path):
+    endpoint_path = os.path.relpath(file_path, folder_to_monitor)
+    filename, extension = os.path.splitext(endpoint_path)
+    endpoint = '/' + filename.replace(os.path.sep, '/')
+
+    if endpoint not in endpoints:
+        print(f"Endpoint {endpoint} does not exist")
+        return
+    
+    # Remove from Flask routes
+    if endpoint in app.view_functions:
+        app.view_functions.pop(endpoint)
+        print(f"Removed Flask view function for {endpoint}")
+
+    if endpoint in endpoints:
+        endpoints.pop(endpoint)
+        print(f"Removed model info for {endpoint}")
+
+    if endpoint in models_info:
+        models_info.pop(endpoint)
+        print(f"Removed model info for {endpoint}")
+
+    # Remove route rule
+    rules_to_remove = [rule for rule in list(app.url_map.iter_rules()) if rule.rule == endpoint]
+    for rule in rules_to_remove:
+        app.url_map._rules.remove(rule)
+        app.url_map._rules_by_endpoint.pop(rule.endpoint, None)    
+
+    print(f"Deleted endpoint {endpoint}")
 
 
 @app.route('/test')
