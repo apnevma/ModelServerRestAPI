@@ -22,8 +22,6 @@ def switch_case_load(path):
             info, model = scikit_models.load_joblib(path)
 
         elif extension in ['.pt', '.pth']:
-            # Old behavior: raw torch.save(model) format (class must exist)
-            # You might *deprecate* this soon.
             print("Processing PyTorch single-file model (.pt/.pth)")
             info, model = pytorch_models.load_pytorch(path)
 

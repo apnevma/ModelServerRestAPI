@@ -24,7 +24,7 @@ services:
     volumes:
       - ./models:/local_models   # Host folder (read-only inside container)
       - models_data:/models         # Shared named volume
-    #restart: unless-stopped
+    restart: unless-stopped
     networks:
       - model_server_net
     working_dir: /syncer
