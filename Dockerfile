@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY *.py ./
 COPY templates/ /app/templates/
 COPY static/ /app/static/
+COPY syncer/ /app/syncer/
 
 # Copy all models into the container
 COPY models/ /models/
