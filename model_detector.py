@@ -27,7 +27,6 @@ def switch_case_load(path):
 
         elif extension == '.params':
             print("Processing model from MXNet")
-            # info, model = model_mxnet.load_params(path)
 
         else:
             print("Unsupported file format:", path)

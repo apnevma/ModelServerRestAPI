@@ -9,6 +9,8 @@ services:
     environment:
       - MODELS_PATH=/models    # path inside container
       - REGISTRY=/app/.tfserving_registry.json
+      - API_HOST=localhost # or 168.119.235.102 for the server
+      - PORT=8086
     volumes:
       - models_data:/models                     # mount named volume for models/
       - /var/run/docker.sock:/var/run/docker.sock   # gives docker access to my pyhton code (tfserving_manager.py)

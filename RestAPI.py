@@ -7,11 +7,11 @@ import signal, sys
 import json
 from threading import Thread
 
-
 # Local imports
 import model_detector, tf_serving_manager
 
-PORT = 8086
+API_HOST = os.getenv("API_HOST", "localhost")
+PORT = int(os.getenv("PORT", "8086"))
 
 app = Flask(__name__)
 
@@ -167,7 +167,7 @@ def help_endpoint():
         "available_models": [
             {
                 "model_name": info["model_name"],
-                "endpoint_url": f"http://168.119.235.102:8086/predict/{info['model_name']}",
+                "endpoint_url": f"http://{API_HOST}:{PORT}/predict/{info['model_name']}",
                 "model_info": info["model_info"]
             }
             for info in models_info.values()

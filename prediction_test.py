@@ -1,7 +1,12 @@
 import requests
+import os
+
+
+API_HOST = os.getenv("API_HOST", "localhost")
+PORT = int(os.getenv("PORT", "8086"))
 
 # URL of local model endpoint
-url = "http://168.119.235.102:8086/predict/rf_model"
+url = f"http://{API_HOST}:{PORT}/predict/rf_model"
 
 # Example input data (features = [temperature, humidity, soundLevel])
 data = {
