@@ -87,7 +87,7 @@ class MyHandler(FileSystemEventHandler):
         if model_name in active_models:
             print(f"[!] Removing active model '{model_name}' from disk → auto-deactivate...")
             try:
-                tf_serving_manager.stop(model_name)
+                tf_serving_manager.stop_container(model_name)
             except:
                 pass
             del active_models[model_name]
@@ -148,7 +148,7 @@ def deactivate_model(model_name):
 
     # Stop TF container (if used)
     try:
-        tf_serving_manager.stop(model_name)
+        tf_serving_manager.stop_container(model_name)
     except:
         pass
 
@@ -218,7 +218,7 @@ def help_endpoint():
     
     response_data = {
         "message": (
-            "Below are all the available models loaded from the models/ folder. "
+            "Below are all the active models loaded from the models/ folder. "
             "To add new models, simply drop them into that folder and the system "
             "will automatically detect and expose them via the dynamic /predict/<model_name> endpoint."
         ),
