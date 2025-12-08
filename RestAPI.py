@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, Response, render_template
 from watchdog.observers.polling import PollingObserver as Observer
 from watchdog.events import FileSystemEventHandler
-from flask_cors import cross_origin
 import os
 import signal, sys
 import json
@@ -22,27 +21,22 @@ print("folder_to_monitor contents:", os.listdir(folder_to_monitor))
 
 # Dictionary to store endpoints for each file
 endpoints = {}
-# Store extra metadata for help endpoint
-models_info = {}
+# All detected models (from filesystem)
+available_models = {}   # model_name -> {model_path}
+# Only active models get loaded and registered here
+active_models = {}   # model_name -> {model, model_info, model_path}
 
 
-def initialize_endpoints():
-    # Loop through each file in the folder
+def initialize_models():
     for filename in os.listdir(folder_to_monitor):
         file_path = os.path.join(folder_to_monitor, filename)
-
-        print(f"file_path for filename {filename}:", file_path)
-
-        create_endpoint(file_path)
-
-    # Print models in models_info
-    print("=== Registered Endpoints ===")
-    for endpoint in models_info:
-        print(endpoint)
-    # Print Flask URL rules
-    print("=== Flask URL Rules ===")
-    for rule in app.url_map.iter_rules():
-        print(rule, "->", app.view_functions[rule.endpoint])
+        if os.path.isdir(file_path) or os.path.isfile(file_path):
+            model_name = os.path.splitext(filename)[0]
+            available_models[model_name] = {
+                "model_name": model_name,
+                "model_path": file_path
+            }
+    print("Available models:", list(available_models.keys()))
 
 
 class MyHandler(FileSystemEventHandler):
@@ -68,65 +62,108 @@ class MyHandler(FileSystemEventHandler):
         for model in current_models - previous_models:
             path = os.path.join(folder_to_monitor, model)
             print(f"[WATCHDOG][CREATED] {path}")
-            create_endpoint(path)
+            self.add_model(model, path)
 
         # Detect removed models
         for model in previous_models - current_models:
             path = os.path.join(folder_to_monitor, model)
             print(f"[WATCHDOG][DELETED] {path}")
-            delete_endpoint(path)
+            self.remove_model(model)
 
         # Update the registered models set
         self.registered_models = current_models
 
-
-
-def create_endpoint(file_path):
-    """
-    Registers a model in the internal registry.
-    """
-    endpoint_path = os.path.relpath(file_path, folder_to_monitor)
-    filename, extension = os.path.splitext(endpoint_path)
-    endpoint = filename.replace(os.path.sep, '/')  # just store name, no leading /
-
-    model_info, model = model_detector.detect(os.path.join(folder_to_monitor, endpoint_path))
-
-    if model is not None:
-        print(f"[+] Model detected: {filename}")
-        # Store everything needed for dynamic prediction
-        models_info[endpoint] = {
-            "model_name": filename,
-            "model_path": os.path.join(folder_to_monitor, endpoint_path),
-            "model": model,
-            "model_info": model_info
+    def add_model(self, model, path):
+        model_name = os.path.splitext(model)[0]
+        available_models[model_name] = {
+            "model_name": model_name,
+            "model_path": path
         }
-        print(f"[+] Registered '{endpoint}' for dynamic prediction")
-    else:
-        print(f"[!] Extension not supported: {extension}")
+        print(f"[+] Added '{model_name}' to available_models.")
+
+    def remove_model(self, model):
+        model_name = os.path.splitext(model)[0]
+
+        if model_name in active_models:
+            print(f"[!] Removing active model '{model_name}' from disk → auto-deactivate...")
+            try:
+                tf_serving_manager.stop(model_name)
+            except:
+                pass
+            del active_models[model_name]
+
+        if model_name in available_models:
+            del available_models[model_name]
+
+        print(f"[-] Removed '{model_name}' from available_models.")
 
 
-def delete_endpoint(file_path):
-    """
-    Remove a model from the internal registry and Flask endpoints.
-    """
-    endpoint_path = os.path.relpath(file_path, folder_to_monitor)
-    filename, _ = os.path.splitext(endpoint_path)
-    endpoint = filename.replace(os.path.sep, '/')
 
-    # Remove from models_info
-    if endpoint in models_info:
-        models_info.pop(endpoint)
-        print(f"[-] Removed '{endpoint}' from registry")
-    else:
-        print(f"[!] Model '{endpoint}' not found in registry")    
+# Get model status (active/not_active)
+@app.route('/status/<model_name>')
+def model_status(model_name):
+    if model_name not in available_models:
+        return jsonify({"error": "Model not found"}), 404
+    
+    is_active = model_name in active_models
+    return jsonify({
+        "model_name": model_name,
+        "active": is_active
+    })
 
 
+# Activate available model
+@app.route('/activate/<model_name>', methods=['POST'])
+def activate_model(model_name):
+    if model_name not in available_models:
+        return jsonify({"error": "Model not found"}), 404
+
+    # Already active?
+    if model_name in active_models:
+        return jsonify({"message": "Model already active"})
+
+    model_path = available_models[model_name]["model_path"]
+    model_info, model = model_detector.detect(model_path)
+
+    if model is None:
+        return jsonify({"error": "Unsupported or invalid model"}), 400
+
+    active_models[model_name] = {
+        "model_name": model_name,
+        "model": model,
+        "model_info": model_info,
+        "model_path": model_path
+    }
+
+    return jsonify({
+        "message": f"Model {model_name} activated",
+        "predict_endpoint": f"/predict/{model_name}"
+    })
+
+# Deactivate model
+@app.route('/deactivate/<model_name>', methods=['POST'])
+def deactivate_model(model_name):
+    if model_name not in active_models:
+        return jsonify({"message": "Model already inactive"})
+
+    # Stop TF container (if used)
+    try:
+        tf_serving_manager.stop(model_name)
+    except:
+        pass
+
+    del active_models[model_name]
+
+    return jsonify({"message": f"Model {model_name} deactivated"})
+
+
+# Endpoint for predictions
 @app.route("/predict/<model_name>", methods=["POST"])
 def dynamic_predict(model_name):
-    if model_name not in models_info:
+    if model_name not in active_models:
         return jsonify({"error": f"Model '{model_name}' not found"}), 404
 
-    model_entry = models_info[model_name]
+    model_entry = active_models[model_name]
     features = request.get_json().get("input")
 
     try:
@@ -152,10 +189,31 @@ def dynamic_predict(model_name):
 def test_endpoint():
     return 'The Model Server is ALIVE!'
 
-# Help endpoint to provide info for all the available models
+# List all available models
+@app.route('/models', methods=['GET'])
+def list_models():
+    output = []
+
+    for model_name, entry in available_models.items():
+        is_active = model_name in active_models
+
+        output.append({
+            "model_name": model_name,
+            "status": "active" if is_active else "inactive",
+            "model_path": entry["model_path"],
+            "predict_url": (
+                f"http://{API_HOST}:{PORT}/predict/{model_name}"
+                if is_active else None
+            )
+        })
+
+    return jsonify(output)
+
+
+# Help endpoint to provide info for all the active models
 @app.route('/help')
 def help_endpoint():
-    if not models_info:
+    if not active_models:
         return jsonify({"message": "No models currently loaded."})
     
     response_data = {
@@ -164,13 +222,13 @@ def help_endpoint():
             "To add new models, simply drop them into that folder and the system "
             "will automatically detect and expose them via the dynamic /predict/<model_name> endpoint."
         ),
-        "available_models": [
+        "active_models": [
             {
                 "model_name": info["model_name"],
                 "endpoint_url": f"http://{API_HOST}:{PORT}/predict/{info['model_name']}",
                 "model_info": info["model_info"]
             }
-            for info in models_info.values()
+            for info in active_models.values()
         ]
     }
 
@@ -190,7 +248,7 @@ def help_ui():
             "endpoint_url": f"/predict/{info['model_name']}",
             "model_info": info["model_info"]
         }
-        for info in models_info.values()
+        for info in active_models.values()
     ]
     return render_template('help.html', models=models)
 
@@ -219,7 +277,7 @@ signal.signal(signal.SIGINT, cleanup)
 
 
 if __name__ == '__main__':
-    initialize_endpoints()
+    initialize_models()
     start_monitoring()       # Start the watchdog in the background
 
     app.run(host='0.0.0.0', port=PORT)
