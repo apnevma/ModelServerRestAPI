@@ -8,3 +8,5 @@ models/*
 !models/saved_model
 
 .tfserving_registry.json
+
+activate_test.py
