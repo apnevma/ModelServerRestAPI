@@ -3,8 +3,6 @@ venv/
 __pycache__/
 
 models/*
-!models/capacitor_fit_model_savedmodel
-!models/geometry_fit_model_rotation_scale_only
 !models/saved_model
 
 .tfserving_registry.json
