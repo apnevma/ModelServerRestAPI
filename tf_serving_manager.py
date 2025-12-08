@@ -1,6 +1,6 @@
 import time, json, requests, docker
 from pathlib import Path
-
+import logging
 
 
 LABEL_KEY = "project"
@@ -9,6 +9,12 @@ REGISTRY = Path(".tfserving_registry.json")
 
 client = docker.from_env()
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 def _load_registry():
     if REGISTRY.exists():
@@ -97,6 +103,7 @@ def ensure_container(model_name: str, model_subdir: str, timeout=60):
 
 
 def stop_container(model_name: str):
+    logging.info(f"Attempting to stop tf_serving container: {model_name}")
     registry = _load_registry()
     try:
         c = client.containers.get(_container_name(model_name))
@@ -106,6 +113,7 @@ def stop_container(model_name: str):
     if model_name in registry:
         del registry[model_name]
         _save_registry(registry)
+        logging.info(f"[-] Removed tf_serving container: {model_name}")
 
 
 def list_managed_containers():
