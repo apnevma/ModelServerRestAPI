@@ -50,7 +50,7 @@ def initialize_models():
                 available_models[model_name] = {
                     "source": "local",
                     "model_name": model_name,
-                    "local_path": file_path
+                    "model_path": file_path
                 }
         print("[INIT] loaded local models:", list(available_models.keys()))        
 
