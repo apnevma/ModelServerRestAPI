@@ -8,9 +8,11 @@ from threading import Thread
 
 # Local imports
 import model_detector, tf_serving_manager
+from harbor_client import list_harbor_models
 
 API_HOST = os.getenv("API_HOST", "localhost")
 PORT = int(os.getenv("PORT", "8086"))
+MODEL_SOURCE = os.getenv("MODEL_SOURCE", "local")  # "local" or "harbor"
 
 app = Flask(__name__)
 
@@ -28,15 +30,29 @@ active_models = {}   # model_name -> {model, model_info, model_path}
 
 
 def initialize_models():
-    for filename in os.listdir(folder_to_monitor):
-        file_path = os.path.join(folder_to_monitor, filename)
-        if os.path.isdir(file_path) or os.path.isfile(file_path):
-            model_name = os.path.splitext(filename)[0]
-            available_models[model_name] = {
-                "model_name": model_name,
-                "model_path": file_path
-            }
-    print("Available models:", list(available_models.keys()))
+    available_models.clear()
+    if MODEL_SOURCE == "harbor":
+        try:
+            harbor_entries = list_harbor_models()
+            for entry in harbor_entries:
+                name = entry["model_name"]
+                # keep the harbor metadata so we can download later
+                available_models[name] = entry
+            print("[INIT] loaded models from Harbor:", list(available_models.keys()))
+        except Exception as e:
+            print("[INIT][ERROR] failed to list Harbor models:", e)
+    else:
+        # local filesystem
+        for filename in os.listdir(folder_to_monitor):
+            file_path = os.path.join(folder_to_monitor, filename)
+            if os.path.isdir(file_path) or os.path.isfile(file_path):
+                model_name = os.path.splitext(filename)[0]
+                available_models[model_name] = {
+                    "source": "local",
+                    "model_name": model_name,
+                    "local_path": file_path
+                }
+        print("[INIT] loaded local models:", list(available_models.keys()))        
 
 
 class MyHandler(FileSystemEventHandler):
@@ -209,6 +225,13 @@ def list_models():
 
     return jsonify(output)
 
+# list raw harbor entries
+@app.route('/models/harbor', methods=['GET'])
+def models_harbor():
+    try:
+        return jsonify(list_harbor_models())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Help endpoint to provide info for all the active models
 @app.route('/help')
