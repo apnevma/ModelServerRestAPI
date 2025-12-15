@@ -14,7 +14,7 @@ COPY static/ /app/static/
 COPY syncer/ /app/syncer/
 
 # Copy all models into the container
-COPY models/ /models/
+# COPY models/ /models/
 
 EXPOSE 8086
 

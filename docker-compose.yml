@@ -22,9 +22,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock   # gives docker access to my pyhton code (tfserving_manager.py)
     labels:
       project: ModelServerREST
-    restart: unless-stopped
+    #restart: unless-stopped
 
   model_syncer:
+    profiles: ["local"]
     build:
       context: ./syncer
       dockerfile: syncer.Dockerfile
