@@ -8,7 +8,7 @@ from threading import Thread
 
 # Local imports
 import model_detector, tf_serving_manager
-from github_client import list_github_models
+from github_client import list_github_models, download_github_model
 
 API_HOST = os.getenv("API_HOST", "localhost")
 PORT = int(os.getenv("PORT", "8086"))
@@ -39,6 +39,7 @@ def initialize_models():
                 # keep the github metadata so we can download later
                 available_models[name] = entry
             print("[INIT] loaded models from Github:", list(available_models.keys()))
+            print(available_models)
         except Exception as e:
             print("[INIT][ERROR] failed to list Github models:", e)
     else:
@@ -138,9 +139,24 @@ def activate_model(model_name):
     if model_name in active_models:
         return jsonify({"message": "Model already active"})
 
-    model_path = available_models[model_name]["model_path"]
-    model_info, model = model_detector.detect(model_path)
+    model_entry = available_models[model_name]
 
+    # Determine source
+    if model_entry["source"] == "local":
+        model_path = model_entry["model_path"]
+    elif model_entry["source"] == "github":
+        # model_path is the path inside the GitHub repo
+        repo_path = model_entry["model_path"]
+        try:
+            print(f"Downloading {repo_path} from GitHub")
+            model_path = download_github_model(model_entry)
+        except Exception as e:
+            return jsonify({"error": f"Failed to download model from GitHub: {str(e)}"}), 500
+    else:
+        return jsonify({"error": "Unknown model source"}), 500
+
+    # Detect/load the model
+    model_info, model = model_detector.detect(model_path)
     if model is None:
         return jsonify({"error": "Unsupported or invalid model"}), 400
 
@@ -205,6 +221,7 @@ def dynamic_predict(model_name):
 def test_endpoint():
     return 'The Model Server is ALIVE!'
 
+
 # List all available models
 @app.route('/models', methods=['GET'])
 def list_models():
@@ -216,7 +233,7 @@ def list_models():
         output.append({
             "model_name": model_name,
             "status": "active" if is_active else "inactive",
-            "repo_path": entry["repo_path"],
+            "model_path": entry["model_path"],
             "predict_url": (
                 f"http://{API_HOST}:{PORT}/predict/{model_name}"
                 if is_active else None
@@ -225,13 +242,6 @@ def list_models():
 
     return jsonify(output)
 
-# list raw github entries
-@app.route('/models/github', methods=['GET'])
-def models_github():
-    try:
-        return jsonify(list_github_models())
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 # Help endpoint to provide info for all the active models
 @app.route('/help')
