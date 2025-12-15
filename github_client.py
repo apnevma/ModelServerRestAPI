@@ -25,20 +25,6 @@ if GITHUB_TOKEN:
 
 TIMEOUT = 15
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-
-
-def test_github_access():
-    url = f"https://api.github.com/repos/{GITHUB_REPO}"
-    r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
-    r.raise_for_status()
-    print(r.json()["full_name"]) 
-
 
 def list_repo_root():
     url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{MODELS_ROOT}"
@@ -130,13 +116,13 @@ def download_github_model(model_entry):
     repo_path = model_entry["model_path"]
     info = github_api_get(repo_path)
 
-    # ---------- FILE ----------
+    # Single file
     if isinstance(info, dict) and info.get("type") == "file":
         dest_file = os.path.join("/models", os.path.basename(repo_path))
         download_file(info["download_url"], dest_file)
         return dest_file
 
-    # ---------- DIRECTORY ----------
+    # Directory
     if isinstance(info, list):
         dest_dir = os.path.join("/models", model_entry["model_name"])
         if os.path.exists(dest_dir):
@@ -144,5 +130,5 @@ def download_github_model(model_entry):
         download_folder(repo_path, dest_dir)
         return dest_dir
 
-    # ---------- UNKNOWN ----------
+    # other (unsupported) format
     raise RuntimeError(f"Unsupported GitHub model type for path: {repo_path}")
