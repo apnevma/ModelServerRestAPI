@@ -1,10 +1,38 @@
-# ModelServer REST API
+# ML Models Serving Tool
 
-A Flask-based REST API for dynamically serving machine learning models. Supports **Scikit-learn**, **TensorFlow/Keras**, **TensorFlow SavedModels**, and **PyTorch** models. Each model is automatically exposed as its own endpoint, allowing clients to send input data and receive predictions in JSON format.  
+A Flask-based REST API for **dynamic machine learning model serving**, supporting Scikit-learn, TensorFlow/Keras, TensorFlow SavedModels, and PyTorch.  
 
-Now fully **Dockerized**:
-* One container for the API (`model_server_api`)
-* One TF Serving container per TensorFlow SavedModel
+The system operates in two distinct modes, controlled by an environment variable:
+* `MODEL_SOURCE=github` → models are fetched on demand from a GitHub repository
+* `MODEL_SOURCE=local_filesystem` → models are read from a local models/ folder and kept in sync via a dedicated container  
+
+The API dynamically loads models, exposes prediction endpoints, and provides a web-based UI for inspecting active models and their metadata.
+
+## Operating Modes
+### 1. GitHub Mode (`MODEL_SOURCE=github`)
+In this mode, the API treats a GitHub repository as a remote model registry.
+
+**Behavior**
+* The API scans the `models/` folder inside the GitHub repository
+* All detected models are added to `available_models`
+* Models are inactive by default
+* A model is downloaded and loaded only when explicitly activated
+
+**Lifecycle**
+1. Model appears in `available_models`
+2. User activates the model via API
+3. Model is downloaded into `/models`
+4. Model is loaded or deployed
+5. A prediction endpoint is registered
+
+### 2. Local Filesystem Mode (`MODEL_SOURCE=local_filesystem`)
+In this mode, the API serves models from a local models/ directory.
+
+**Behavior**
+* On startup, the API scans the `models/` folder
+* All detected models are immediately added to `available_models`
+* No GitHub access is required
+* Models can be activated without downloading
 
 ## Features
 
