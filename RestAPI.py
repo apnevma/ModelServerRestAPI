@@ -12,7 +12,7 @@ from github_client import list_github_models, download_github_model
 
 API_HOST = os.getenv("API_HOST", "localhost")
 PORT = int(os.getenv("PORT", "8086"))
-MODEL_SOURCE = os.getenv("MODEL_SOURCE", "local")  # "local" or "github"
+MODEL_SOURCE = os.getenv("MODEL_SOURCE", "local_filesystem")  # "local_filesystem" or "github"
 
 app = Flask(__name__)
 
@@ -49,11 +49,11 @@ def initialize_models():
             if os.path.isdir(file_path) or os.path.isfile(file_path):
                 model_name = filename
                 available_models[model_name] = {
-                    "source": "local",
+                    "source": "local_filesystem",
                     "model_name": model_name,
                     "model_path": file_path
                 }
-        print("[INIT] loaded local models:", list(available_models.keys()))        
+        print("[INIT] loaded local_filesystem models:", list(available_models.keys()))        
 
 
 class MyHandler(FileSystemEventHandler):
@@ -142,7 +142,7 @@ def activate_model(model_name):
     model_entry = available_models[model_name]
 
     # Determine source
-    if model_entry["source"] == "local":
+    if model_entry["source"] == "local_filesystem":
         model_path = model_entry["model_path"]
     elif model_entry["source"] == "github":
         # model_path is the path inside the GitHub repo
