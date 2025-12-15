@@ -14,10 +14,9 @@ services:
       MODELS_PATH: ${MODELS_PATH}
       REGISTRY: ${REGISTRY}
       MODEL_SOURCE: ${MODEL_SOURCE}
-      HARBOR_URL: ${HARBOR_URL}
-      HARBOR_PROJECT: ${HARBOR_PROJECT}
-      HARBOR_USERNAME: ${HARBOR_USERNAME}
-      HARBOR_PASSWORD: ${HARBOR_PASSWORD}
+      GITHUB_REPO: ${GITHUB_REPO}
+      GITHUB_BRANCH: ${GITHUB_BRANCH}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
     volumes:
       - models_data:/models                     # mount named volume for models/
       - /var/run/docker.sock:/var/run/docker.sock   # gives docker access to my pyhton code (tfserving_manager.py)

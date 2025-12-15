@@ -1,12 +1,13 @@
 import os
 import requests
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
-load_dotenv()
+#load_dotenv()
 
 GITHUB_REPO = os.getenv("GITHUB_REPO")
 GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+MODELS_ROOT = "models"
 
 if not GITHUB_REPO:
     raise RuntimeError("GITHUB_REPO is not set")
@@ -29,7 +30,7 @@ def test_github_access():
 
 
 def list_repo_root():
-    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents"
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{MODELS_ROOT}"
     params = {"ref": GITHUB_BRANCH}
     r = requests.get(url, headers=HEADERS, timeout=TIMEOUT, params=params)
     r.raise_for_status()
@@ -49,7 +50,8 @@ def list_github_models():
             models[model_name] = {
                 "source": "github",
                 "model_name": model_name,
-                "repo_path": name
+                "type": item["type"],
+                "repo_path": f"{GITHUB_REPO}/{MODELS_ROOT}/{name}"
             }
 
         # Case 2: folder-based model
@@ -58,7 +60,8 @@ def list_github_models():
             models[model_name] = {
                 "source": "github",
                 "model_name": model_name,
-                "repo_path": name
+                "type": item["type"],
+                "repo_path": f"{GITHUB_REPO}/{MODELS_ROOT}/{name}"
             }
     print(models)
     return models
