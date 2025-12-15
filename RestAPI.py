@@ -8,11 +8,11 @@ from threading import Thread
 
 # Local imports
 import model_detector, tf_serving_manager
-from harbor_client import list_harbor_models
+from github_client import list_github_models
 
 API_HOST = os.getenv("API_HOST", "localhost")
 PORT = int(os.getenv("PORT", "8086"))
-MODEL_SOURCE = os.getenv("MODEL_SOURCE", "local")  # "local" or "harbor"
+MODEL_SOURCE = os.getenv("MODEL_SOURCE", "local")  # "local" or "github"
 
 app = Flask(__name__)
 
@@ -31,22 +31,22 @@ active_models = {}   # model_name -> {model, model_info, model_path}
 
 def initialize_models():
     available_models.clear()
-    if MODEL_SOURCE == "harbor":
+    if MODEL_SOURCE == "github":
         try:
-            harbor_entries = list_harbor_models()
-            for entry in harbor_entries:
+            github_entries = list_github_models()
+            for entry in github_entries.values():
                 name = entry["model_name"]
-                # keep the harbor metadata so we can download later
+                # keep the github metadata so we can download later
                 available_models[name] = entry
-            print("[INIT] loaded models from Harbor:", list(available_models.keys()))
+            print("[INIT] loaded models from Github:", list(available_models.keys()))
         except Exception as e:
-            print("[INIT][ERROR] failed to list Harbor models:", e)
+            print("[INIT][ERROR] failed to list Github models:", e)
     else:
         # local filesystem
         for filename in os.listdir(folder_to_monitor):
             file_path = os.path.join(folder_to_monitor, filename)
             if os.path.isdir(file_path) or os.path.isfile(file_path):
-                model_name = os.path.splitext(filename)[0]
+                model_name = filename
                 available_models[model_name] = {
                     "source": "local",
                     "model_name": model_name,
@@ -216,7 +216,7 @@ def list_models():
         output.append({
             "model_name": model_name,
             "status": "active" if is_active else "inactive",
-            "model_path": entry["model_path"],
+            "repo_path": entry["repo_path"],
             "predict_url": (
                 f"http://{API_HOST}:{PORT}/predict/{model_name}"
                 if is_active else None
@@ -225,11 +225,11 @@ def list_models():
 
     return jsonify(output)
 
-# list raw harbor entries
-@app.route('/models/harbor', methods=['GET'])
-def models_harbor():
+# list raw github entries
+@app.route('/models/github', methods=['GET'])
+def models_github():
     try:
-        return jsonify(list_harbor_models())
+        return jsonify(list_github_models())
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
