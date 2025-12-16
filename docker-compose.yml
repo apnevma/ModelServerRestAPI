@@ -25,7 +25,7 @@ services:
     #restart: unless-stopped
 
   model_syncer:
-    profiles: ["local"]
+    profiles: ["local_filesystem"]
     build:
       context: ./syncer
       dockerfile: syncer.Dockerfile

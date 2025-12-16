@@ -17,7 +17,7 @@ MODEL_SOURCE = os.getenv("MODEL_SOURCE", "local_filesystem")  # "local_filesyste
 app = Flask(__name__)
 
 # Define the folder to monitor (with fallback if docker environment variable is not set)
-folder_to_monitor = os.environ.get("MODELS_PATH", "./models")
+folder_to_monitor = os.environ.get("MODELS_PATH", "/models")
 print("folder_to_monitor:", folder_to_monitor)
 print("folder_to_monitor contents:", os.listdir(folder_to_monitor))
 
@@ -45,9 +45,10 @@ def initialize_models():
     else:
         # local filesystem
         for filename in os.listdir(folder_to_monitor):
+            print(f"[INIT] Local Filesystem Mode: initializing model: {filename}")
             file_path = os.path.join(folder_to_monitor, filename)
             if os.path.isdir(file_path) or os.path.isfile(file_path):
-                model_name = filename
+                model_name = os.path.splitext(filename)[0]
                 available_models[model_name] = {
                     "source": "local_filesystem",
                     "model_name": model_name,
