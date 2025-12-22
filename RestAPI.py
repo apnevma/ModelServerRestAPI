@@ -214,10 +214,14 @@ def dynamic_predict(model_name):
         else:
             prediction = result
     
-        # Send only the bare value to Kafka
+        # Wrap in JSON
+        prediction_dict = {"prediction": prediction}
+        json_str = json.dumps(prediction_dict)
+
+        # Send to Kafka
         kafka_ok = send_message(
             topic="INTRA_test_topic1",
-            message=prediction,
+            message=json_str,  # send JSON string
             key=model_name
         )
 
