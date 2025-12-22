@@ -33,6 +33,7 @@ services:
     volumes:
       - ./models:/local_models   # Host folder (read-only inside container)
       - models_data:/models         # Shared named volume
+      - ./kafka/certs:/app/kafka/certs:ro
     restart: unless-stopped
     networks:
       - model_server_net

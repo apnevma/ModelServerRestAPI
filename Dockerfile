@@ -12,6 +12,7 @@ COPY *.py ./
 COPY templates/ /app/templates/
 COPY static/ /app/static/
 COPY syncer/ /app/syncer/
+COPY kafka_client/ /app/kafka_client
 
 # Copy all models into the container
 # COPY models/ /models/

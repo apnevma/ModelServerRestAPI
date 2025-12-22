@@ -9,6 +9,7 @@ from threading import Thread
 # Local imports
 import model_detector, tf_serving_manager
 from github_client import list_github_models, download_github_model
+from kafka_client.producer import send_message
 
 API_HOST = os.getenv("API_HOST", "localhost")
 PORT = int(os.getenv("PORT", "8086"))
@@ -197,7 +198,8 @@ def dynamic_predict(model_name):
         return jsonify({"error": f"Model '{model_name}' not found"}), 404
 
     model_entry = active_models[model_name]
-    features = request.get_json().get("input")
+    payload = request.get_json(silent=True) or {}
+    features = payload.get("input")
 
     try:
         result = model_detector.predict(
@@ -206,16 +208,33 @@ def dynamic_predict(model_name):
             features
         )
 
-        # If TF Serving, unwrap the 'predictions' key
+        # Unwrap TF Serving result if needed
         if isinstance(result, dict) and "predictions" in result:
-            return jsonify({"prediction": result["predictions"]})
-        return jsonify({"prediction": result})
+            prediction = result["predictions"]
+        else:
+            prediction = result
+    
+        # Send only the bare value to Kafka
+        kafka_ok = send_message(
+            topic="INTRA_test_topic1",
+            message=prediction,
+            key=model_name
+        )
+
+        if not kafka_ok:
+            return jsonify({"error": "Failed to send prediction to Kafka"}), 500
+
+        # Lightweight HTTP response
+        return jsonify({
+            "status": "sent",
+            "prediction": prediction
+        })
 
     except Exception as e:
         return jsonify({
             "error": str(e),
             "expected_input": model_entry["model_info"]
-        })
+        }), 500
 
 
 @app.route('/test')

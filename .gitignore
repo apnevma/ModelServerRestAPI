@@ -9,4 +9,4 @@ models/*
 .tfserving_registry.json
 
 kafka/certs/
-
+certs/
