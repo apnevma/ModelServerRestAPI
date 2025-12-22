@@ -8,5 +8,5 @@ models/*
 
 .tfserving_registry.json
 
-# Model Dockerfiles 
-Dockerfile.*
+kafka/certs/
+
