@@ -9,11 +9,13 @@ from threading import Thread
 # Local imports
 import model_detector, tf_serving_manager
 from github_client import list_github_models, download_github_model
-from kafka_client.producer import send_message
+from messaging.kafka_producer import send_kafka_message
+from messaging.mqtt_producer import send_mqtt_message
 
 API_HOST = os.getenv("API_HOST", "localhost")
 PORT = int(os.getenv("PORT", "8086"))
 MODEL_SOURCE = os.getenv("MODEL_SOURCE", "local_filesystem")  # "local_filesystem" or "github"
+PREDICTION_DESTINATION = os.getenv("PREDICTION_DESTINATION", "kafka")     # "kafka" or "mqtt"
 
 app = Flask(__name__)
 
@@ -215,22 +217,27 @@ def dynamic_predict(model_name):
             prediction = result
     
         # Wrap in JSON
-        prediction_dict = {"prediction": prediction}
-        json_str = json.dumps(prediction_dict)
+        payload = {"prediction": prediction}
+        json_str = json.dumps(payload)
 
-        # Send to Kafka
-        kafka_ok = send_message(
-            topic="INTRA_test_topic1",
-            message=json_str,  # send JSON string
-            key=model_name
+        if PREDICTION_DESTINATION == "kafka":
+                ok = send_kafka_message(
+                topic="INTRA_test_topic1",
+                message=json_str,  # send JSON string
+                key=model_name
         )
+        elif PREDICTION_DESTINATION == "mqtt":
+            ok = send_mqtt_message(payload)
+        else:
+            raise ValueError(f"Unknown PREDICTION_SINK: {PREDICTION_DESTINATION}")
 
-        if not kafka_ok:
-            return jsonify({"error": "Failed to send prediction to Kafka"}), 500
+        if not ok:
+            return jsonify({"error": f"Failed to send prediction to {PREDICTION_DESTINATION}"}), 500
 
         # Lightweight HTTP response
         return jsonify({
             "status": "sent",
+            "destination": f"{PREDICTION_DESTINATION}",
             "prediction": prediction
         })
 
