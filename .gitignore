@@ -10,3 +10,5 @@ models/*
 
 kafka/certs/
 certs/
+
+mosquitto.conf
