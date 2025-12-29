@@ -7,8 +7,6 @@ log = logging.getLogger(__name__)
 """
 MQTT_BROKER = "128.140.70.68"
 MQTT_PORT = 30005
-MQTT_USERNAME = "ssf"
-MQTT_PASSWORD = "FhdJW6UppzXKFhdDfyHEEPbe"
 """
 
 # --- For dev only ---
