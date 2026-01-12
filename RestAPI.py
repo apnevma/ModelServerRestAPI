@@ -10,6 +10,7 @@ from threading import Thread
 import model_detector, tf_serving_manager
 from github_client import list_github_models, download_github_model
 from messaging.kafka_producer import send_kafka_message
+from messaging.kafka_consumer import start_kafka_consumer, stop_kafka_consumer
 from messaging.mqtt_producer import send_mqtt_message
 
 API_HOST = os.getenv("API_HOST", "localhost")
@@ -327,6 +328,12 @@ def start_monitoring():
 
 
 def cleanup(signum, frame):
+    print("Stopping Kafka consumer...")
+    try:
+        stop_kafka_consumer()
+    except Exception as e:
+        print(f"Failed to stop Kafka consumer: {e}")
+
     print("Stopping all TF Serving containers...")
     for c in tf_serving_manager.list_managed_containers():
         try:
@@ -343,5 +350,6 @@ signal.signal(signal.SIGINT, cleanup)
 if __name__ == '__main__':
     initialize_models()
     start_monitoring()       # Start the watchdog in the background
+    start_kafka_consumer()   # Start Kafka consumer in a background thread
 
     app.run(host='0.0.0.0', port=PORT)
