@@ -33,7 +33,7 @@ def get_producer():
             # Optional tuning
             "message.send.max.retries": 3,
             "retry.backoff.ms": 1000,
-            "client.id": "flask-kafka-producer"
+            "client.id": "ml-serving-tool-kafka-producer"
         }
         _producer = Producer(conf)
     return _producer
