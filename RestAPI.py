@@ -17,6 +17,10 @@ API_HOST = os.getenv("API_HOST", "localhost")
 PORT = int(os.getenv("PORT", "8086"))
 MODEL_SOURCE = os.getenv("MODEL_SOURCE", "local_filesystem")  # "local_filesystem" or "github"
 PREDICTION_DESTINATION = os.getenv("PREDICTION_DESTINATION", "kafka")     # "kafka" or "mqtt"
+INPUT_DATA_SOURCE = os.getenv("INPUT_DATA_SOURCE", "kafka")               # "kafka" or "mqtt"
+
+if PREDICTION_DESTINATION == "kafka":
+    KAFKA_OUTPUT_TOPIC = os.getenv("KAFKA_OUTPUT_TOPIC", "INTRA_test_topic1")
 
 app = Flask(__name__)
 
@@ -223,7 +227,7 @@ def dynamic_predict(model_name):
 
         if PREDICTION_DESTINATION == "kafka":
                 ok = send_kafka_message(
-                topic="INTRA_test_topic1",
+                topic=KAFKA_OUTPUT_TOPIC,
                 message=json_str,  # send JSON string
                 key=model_name
         )
@@ -350,6 +354,8 @@ signal.signal(signal.SIGINT, cleanup)
 if __name__ == '__main__':
     initialize_models()
     start_monitoring()       # Start the watchdog in the background
-    start_kafka_consumer()   # Start Kafka consumer in a background thread
+
+    if INPUT_DATA_SOURCE == "kafka":
+        start_kafka_consumer()   # Start Kafka consumer in a background thread
 
     app.run(host='0.0.0.0', port=PORT)
