@@ -8,7 +8,8 @@ models/*
 
 .tfserving_registry.json
 
-kafka/certs/
+messaging/certs/
 certs/
+messaging/test_input_producer.py
 
 mosquitto.conf
