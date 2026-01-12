@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 # Kafka config
 KAFKA_SERVERS = "195.201.122.4:9093,195.201.122.4:9096,195.201.122.4:9098"
-KAFKA_INPUT_TOPIC = "INTRA_input_test"
+KAFKA_INPUT_TOPIC = os.getenv("KAFKA_INPUT_TOPIC", "INTRA_input_test")
 KAFKA_GROUP_ID = "ml-serving-tool"
 
 API_HOST = os.getenv("API_HOST", "localhost")
