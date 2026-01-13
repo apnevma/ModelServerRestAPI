@@ -8,6 +8,7 @@ from threading import Thread
 
 # Local imports
 import model_detector, tf_serving_manager
+from utils import send_message_to_prediction_destination
 from github_client import list_github_models, download_github_model
 from messaging.kafka_producer import send_kafka_message
 from messaging.kafka_consumer import start_kafka_consumer, stop_kafka_consumer
@@ -220,37 +221,33 @@ def dynamic_predict(model_name):
         # Unwrap TF Serving result if needed
         if isinstance(result, dict) and "predictions" in result:
             result = result["predictions"]
-    
-        # Wrap in JSON
-        payload = {"prediction": result}
-        json_str = json.dumps(payload)
+            
+        payload = {
+            "model": model_name,
+            "status": "success",
+            "prediction": result
+        }
 
-        if PREDICTION_DESTINATION == "kafka":
-                ok = send_kafka_message(
-                topic=KAFKA_OUTPUT_TOPIC,
-                message=json_str,  # send JSON string
-                key=model_name
-        )
-        elif PREDICTION_DESTINATION == "mqtt":
-            ok = send_mqtt_message(payload)
-        else:
-            raise ValueError(f"Unknown PREDICTION_SINK: {PREDICTION_DESTINATION}")
+        if not send_message_to_prediction_destination(payload, model_name):
+            return jsonify({"error": "Failed to forward prediction"}), 500
 
-        if not ok:
-            return jsonify({"error": f"Failed to send prediction to {PREDICTION_DESTINATION}"}), 500
-
-        # Lightweight HTTP response
         return jsonify({
             "status": "sent",
-            "destination": f"{PREDICTION_DESTINATION}",
+            "destination": PREDICTION_DESTINATION,
             "prediction": result
         })
 
     except Exception as e:
-        return jsonify({
+        error_message = {
+            "model": model_name,
+            "status": "error",
             "error": str(e),
             "expected_input": model_entry["model_info"]
-        }), 500
+        }
+
+        send_message_to_prediction_destination(error_message, model_name)
+
+    return jsonify(error_message), 400
 
 
 @app.route('/test')

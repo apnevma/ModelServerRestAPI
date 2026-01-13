@@ -2,7 +2,16 @@ import numpy as np
 import torch
 import os
 import time
+import logging
+from messaging.kafka_producer import send_kafka_message
+from messaging.mqtt_producer import send_mqtt_message
 
+
+PREDICTION_DESTINATION = os.getenv("PREDICTION_DESTINATION", "kafka")     # "kafka" or "mqtt"
+if PREDICTION_DESTINATION == "kafka":
+    KAFKA_OUTPUT_TOPIC = os.getenv("KAFKA_OUTPUT_TOPIC", "INTRA_test_topic1")
+
+logger = logging.getLogger(__name__)
 
 def make_json_serializable(obj):
     """
@@ -126,3 +135,17 @@ def transform_to_friendly_inputs(metadata):
 
     return friendly_inputs
 
+
+def send_message_to_prediction_destination(message, model_name):
+    if PREDICTION_DESTINATION == "kafka":
+        return send_kafka_message(
+            topic=KAFKA_OUTPUT_TOPIC,
+            message=message,
+            key=model_name
+        )
+
+    elif PREDICTION_DESTINATION == "mqtt":
+        return send_mqtt_message(message)
+
+    logger.error(f"Unknown PREDICTION_DESTINATION: {PREDICTION_DESTINATION}")
+    return False
