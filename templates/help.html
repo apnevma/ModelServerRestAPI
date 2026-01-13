@@ -21,12 +21,25 @@
       <i class="bi bi-box-seam me-2"></i>Active Models
     </h1>
 
-    <p class="help-description text-center mb-5">
-      Below are all the active models loaded from the <code>models/</code> folder. <br>
-      To add new models, simply drop them into that folder and the system will 
-      automatically detect and expose them via the dynamic <code>/predict/{model_name}</code> endpoint. <br>
-      To make prediction requests via the Datacrop VM use the <code>http://168.119.235.102:8086/predict/{model_name}</code> endpoint.
-    </p>
+  <p class="help-description text-center mb-5">
+    Below are all the active models loaded from
+      {% if model_source == "local_filesystem" %}
+        the <code>models/</code> folder.
+      {% elif model_source == "github" %}
+        GitHub, from the repository <code>{{ github_repo }}</code>.
+      {% else %}
+        {{ model_source }}
+      {% endif %}
+    <br>
+    To add new models, simply drop them into that folder and the system will
+    automatically detect and expose them via the dynamic
+    <code>/predict/{model_name}</code> endpoint.
+    <br>
+    To activate an available model send a POST request to <code>{{ api_url }}/activate/{model_name}</code>.
+    <br>
+    To make prediction requests use the following endpoint: 
+    <code>{{ api_url }}/predict/{model_name}</code>
+  </p>
 
     <div class="row g-4 justify-content-center">
       {% for model in models %}

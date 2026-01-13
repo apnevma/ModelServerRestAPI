@@ -16,6 +16,7 @@ from messaging.mqtt_producer import send_mqtt_message
 API_HOST = os.getenv("API_HOST", "localhost")
 PORT = int(os.getenv("PORT", "8086"))
 MODEL_SOURCE = os.getenv("MODEL_SOURCE", "local_filesystem")  # "local_filesystem" or "github"
+GITHUB_REPO = os.getenv("GITHUB_REPO", "apnevma/models-to-test")
 PREDICTION_DESTINATION = os.getenv("PREDICTION_DESTINATION", "kafka")     # "kafka" or "mqtt"
 INPUT_DATA_SOURCE = os.getenv("INPUT_DATA_SOURCE", "kafka")               # "kafka" or "mqtt"
 
@@ -23,6 +24,7 @@ if PREDICTION_DESTINATION == "kafka":
     KAFKA_OUTPUT_TOPIC = os.getenv("KAFKA_OUTPUT_TOPIC", "INTRA_test_topic1")
 
 app = Flask(__name__)
+api_url = f"http://{API_HOST}:{PORT}"
 
 # Define the folder to monitor (with fallback if docker environment variable is not set)
 folder_to_monitor = os.environ.get("MODELS_PATH", "/models")
@@ -217,12 +219,10 @@ def dynamic_predict(model_name):
 
         # Unwrap TF Serving result if needed
         if isinstance(result, dict) and "predictions" in result:
-            prediction = result["predictions"]
-        else:
-            prediction = result
+            result = result["predictions"]
     
         # Wrap in JSON
-        payload = {"prediction": prediction}
+        payload = {"prediction": result}
         json_str = json.dumps(payload)
 
         if PREDICTION_DESTINATION == "kafka":
@@ -243,7 +243,7 @@ def dynamic_predict(model_name):
         return jsonify({
             "status": "sent",
             "destination": f"{PREDICTION_DESTINATION}",
-            "prediction": prediction
+            "prediction": result
         })
 
     except Exception as e:
@@ -319,7 +319,13 @@ def help_ui():
         }
         for info in active_models.values()
     ]
-    return render_template('help.html', models=models)
+    return render_template(
+        'help.html', 
+        models=models,
+        api_url=api_url,
+        model_source=MODEL_SOURCE,
+        github_repo=GITHUB_REPO
+    )
 
 
 def start_monitoring():
