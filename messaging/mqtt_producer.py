@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import paho.mqtt.client as mqtt
 
 log = logging.getLogger(__name__)
@@ -10,10 +11,10 @@ MQTT_PORT = 30005
 """
 
 # --- For dev only ---
-MQTT_BROKER = "mosquitto"
-MQTT_PORT = 1883
 
-MQTT_TOPIC = "INTRA_test_topic1"
+MQTT_BROKER = os.getenv("MQTT_BROKER", "mosquitto")
+MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+MQTT_OUTPUT_TOPIC = os.getenv("MQTT_OUTPUT_TOPIC", "INTRA_test_topic1")
 
 _mqtt_client = None
 
@@ -51,7 +52,7 @@ def send_mqtt_message(message: dict):
         client = get_mqtt_client()
         payload = json.dumps(message).encode("utf-8")
 
-        result = client.publish(MQTT_TOPIC, payload)
+        result = client.publish(MQTT_OUTPUT_TOPIC, payload)
 
         if result.rc != mqtt.MQTT_ERR_SUCCESS:
             raise RuntimeError(f"Publish failed with rc={result.rc}")

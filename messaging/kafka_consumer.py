@@ -55,7 +55,7 @@ def get_consumer():
 
 def forward_to_rest(model_name, features):
     try:
-        # Assuming REST API runs on localhost in the same container
+        # Assuming REST API runs in the same container
         url = f"http://{API_HOST}:{PORT}/predict/{model_name}"
         response = requests.post(url, json={"input": features}, timeout=10)
         if response.status_code == 200:

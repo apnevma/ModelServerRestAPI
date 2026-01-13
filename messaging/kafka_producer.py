@@ -56,7 +56,7 @@ def send_kafka_message(topic, message, key=None):
         )
         # Flush ensures message is sent before returning
         producer.flush()
-        logger.info(f"Message sent to topic '{topic}' successfully")
+        logger.info(f"Message sent to kafka topic '{topic}' successfully")
         return True
     except Exception as e:
         logger.error(f"Kafka send failed: {e}")
