@@ -13,6 +13,7 @@ from github_client import list_github_models, download_github_model
 from messaging.kafka_producer import send_kafka_message
 from messaging.kafka_consumer import start_kafka_consumer, stop_kafka_consumer
 from messaging.mqtt_producer import send_mqtt_message
+from messaging.mqtt_consumer import start_mqtt_consumer, stop_mqtt_consumer
 
 API_HOST = os.getenv("API_HOST", "localhost")
 PORT = int(os.getenv("PORT", "8086"))
@@ -221,7 +222,7 @@ def dynamic_predict(model_name):
         # Unwrap TF Serving result if needed
         if isinstance(result, dict) and "predictions" in result:
             result = result["predictions"]
-            
+
         payload = {
             "model": model_name,
             "status": "success",
@@ -335,11 +336,18 @@ def start_monitoring():
 
 
 def cleanup(signum, frame):
-    print("Stopping Kafka consumer...")
-    try:
-        stop_kafka_consumer()
-    except Exception as e:
-        print(f"Failed to stop Kafka consumer: {e}")
+    if INPUT_DATA_SOURCE == "kafka":
+        print("Stopping Kafka consumer...")
+        try:
+            stop_kafka_consumer()
+        except Exception as e:
+            print(f"Failed to stop Kafka consumer: {e}")
+    elif INPUT_DATA_SOURCE == "mqtt":
+        print("Stopping MQTT consumer...")
+        try:
+            stop_mqtt_consumer()
+        except Exception as e:
+            print(f"Failed to stop MQTT consumer: {e}")
 
     print("Stopping all TF Serving containers...")
     for c in tf_serving_manager.list_managed_containers():
@@ -360,5 +368,7 @@ if __name__ == '__main__':
 
     if INPUT_DATA_SOURCE == "kafka":
         start_kafka_consumer()   # Start Kafka consumer in a background thread
+    elif INPUT_DATA_SOURCE == "mqtt":
+        start_mqtt_consumer()
 
     app.run(host='0.0.0.0', port=PORT)
