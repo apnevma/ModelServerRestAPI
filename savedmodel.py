@@ -52,35 +52,44 @@ def load_savedmodel(model_folder, version):
     
 
 def predict_savedmodel(serving_url, input_data):
-    # If input_data comes from Flask {"input": [...]}, extract the array
     if isinstance(input_data, dict) and "input" in input_data:
         instances = input_data["input"]
     else:
-        instances = input_data  # fallback
+        instances = input_data
 
     payload = {"instances": instances}
-    
+
     try:
-        response = requests.post(serving_url, json=payload)
+        response = requests.post(serving_url, json=payload, timeout=10)
         response.raise_for_status()
-        return response.json()
-    
-    except requests.RequestException as e:
-        # Derive metadata URL
+
+        result = response.json()
+
+        # Defensive check: TF Serving sometimes returns 200 with an error body
+        if "error" in result:
+            raise RuntimeError(result["error"])
+
+        return result
+
+    except Exception as e:
+        # Try to enrich the error with model metadata
         metadata_url = serving_url.replace(":predict", "") + "/metadata"
+
         try:
-            meta_resp = requests.get(metadata_url)
+            meta_resp = requests.get(metadata_url, timeout=5)
             meta_resp.raise_for_status()
             metadata = meta_resp.json()
-            
-            # Transform metadata to a friendlier, user-readable schema
             friendly_inputs = transform_to_friendly_inputs(metadata)
-                
-        except Exception as meta_err:
-            friendly_inputs = {"error": f"Failed to fetch metadata: {meta_err}"}
 
-        return {
-            "error": str(e),
-            "expected_input": friendly_inputs
-        }
+        except Exception as meta_err:
+            friendly_inputs = {
+                "error": f"Failed to fetch metadata: {meta_err}"
+            }
+
+        # Raise Error, do NOT return
+        raise RuntimeError(
+            {
+                "tf_serving_error": str(e)
+            }
+        )
     
