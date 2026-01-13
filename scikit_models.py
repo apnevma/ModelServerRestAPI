@@ -1,4 +1,5 @@
 import joblib
+import numpy as np
 from utils import make_json_serializable, wait_until_stable
 
 
@@ -39,10 +40,19 @@ def get_scikit_model_info(model):
 
 def predict_joblib(model, input_data):
     print("Going to predict with data:", input_data)
-    # Perform prediction using the loaded model
-    prediction = model.predict(input_data)[0]
+
+    # Convert to numpy array for easier shape handling
+    X = np.array(input_data)
+
+    # If input is 1D (single sample like [25.1, 55, 30.5]),
+    # reshape it to (1, n_features)
+    if X.ndim == 1:
+        X = X.reshape(1, -1)
+
+    # Perform prediction
+    predictions = model.predict(X)
 
     # Convert to pure Python types (int, float, list)
-    prediction = make_json_serializable(prediction)
+    predictions = make_json_serializable(predictions)
 
-    return prediction
+    return predictions
