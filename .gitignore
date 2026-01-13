@@ -11,6 +11,7 @@ models/*
 
 messaging/certs/
 certs/
-messaging/test_input_producer.py
+messaging/test_mqtt_input.py
+messaging/test_kafka_input.py
 
 mosquitto.conf
