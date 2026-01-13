@@ -5,7 +5,7 @@ from confluent_kafka import Producer
 
 logger = logging.getLogger(__name__)
 
-KAFKA_SERVERS = "195.201.122.4:9093,195.201.122.4:9096,195.201.122.4:9098"
+KAFKA_SERVERS = os.getenv("KAFKA_SERVERS","195.201.122.4:9093,195.201.122.4:9096,195.201.122.4:9098")
 
 # Paths to certificates
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
