@@ -1,20 +1,16 @@
 import json
 import logging
 import os
+import uuid
 import paho.mqtt.client as mqtt
 
 log = logging.getLogger(__name__)
 
-"""
-MQTT_BROKER = "128.140.70.68"
-MQTT_PORT = 30005
-"""
-
-# --- For dev only ---
-
 MQTT_BROKER = os.getenv("MQTT_BROKER", "mosquitto")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_OUTPUT_TOPIC = os.getenv("MQTT_OUTPUT_TOPIC", "INTRA_test_topic1")
+MQTT_USERNAME = os.getenv("MQTT_USERNAME")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
 
 _mqtt_client = None
 
@@ -25,8 +21,8 @@ def get_mqtt_client():
     if _mqtt_client is None:
         log.info("Creating MQTT producer client")
 
-        client = mqtt.Client()
-        #client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+        client = mqtt.Client(client_id=f"listener-{uuid.uuid4()}")
+        client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
 
         def on_connect(client, userdata, flags, rc):
             if rc == 0:

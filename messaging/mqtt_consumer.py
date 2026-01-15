@@ -3,6 +3,7 @@ import json
 import logging
 import threading
 import requests
+import uuid
 import paho.mqtt.client as mqtt
 
 logger = logging.getLogger(__name__)
@@ -11,6 +12,8 @@ logger = logging.getLogger(__name__)
 MQTT_BROKER = os.getenv("MQTT_BROKER", "mosquitto")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_INPUT_TOPIC = os.getenv("MQTT_INPUT_TOPIC", "INTRA_input_test")
+MQTT_USERNAME = os.getenv("MQTT_USERNAME")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
 
 API_HOST = os.getenv("API_HOST", "localhost")
 PORT = int(os.getenv("PORT", "8086"))
@@ -70,10 +73,17 @@ def start_mqtt_consumer():
 
     logger.info("Starting MQTT consumer")
 
-    client = mqtt.Client()
+    # Create client with a unique ID
+    client = mqtt.Client(client_id=f"consumer-{uuid.uuid4()}")
+
+    # Set username/password
+    client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+
+    # Assign callbacks
     client.on_connect = on_connect
     client.on_message = on_message
 
+    # Connect and start loop
     client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
     client.loop_start()
 
