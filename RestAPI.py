@@ -28,7 +28,7 @@ if PREDICTION_DESTINATION == "kafka":
 app = Flask(__name__)
 api_url = f"http://{API_HOST}:{PORT}"
 
-# Define the folder to monitor (with fallback if docker environment variable is not set)
+# Define the folder to monitor (local)
 folder_to_monitor = os.environ.get("MODELS_PATH", "/models")
 print("folder_to_monitor:", folder_to_monitor)
 print("folder_to_monitor contents:", os.listdir(folder_to_monitor))
@@ -325,6 +325,22 @@ def help_ui():
         github_repo=GITHUB_REPO
     )
 
+@app.route('/github/webhook', methods=["POST"])
+def github_webhook():
+    event = request.headers.get("X-Github-Event")
+
+    if event != "push":
+        return jsonify({"statur": "ignored"}), 200
+    
+    # Only react to push events
+    payload = request.get_json()
+    handle_push_event(payload)
+
+    return jsonify({"status": "processed"}), 200
+
+def handle_push_event(payload):
+    initialize_models()
+
 
 def start_monitoring():
     event_handler = MyHandler()
@@ -364,8 +380,8 @@ signal.signal(signal.SIGINT, cleanup)
 
 if __name__ == '__main__':
     initialize_models()
-    start_monitoring()       # Start the watchdog in the background
-
+    start_monitoring()       # Start the watchdog in the background to detect changes
+    
     if INPUT_DATA_SOURCE == "kafka":
         start_kafka_consumer()   # Start Kafka consumer in a background thread
     elif INPUT_DATA_SOURCE == "mqtt":
