@@ -5,6 +5,7 @@ import os
 import signal, sys
 import json
 from threading import Thread
+import logging
 
 # Local imports
 import model_detector, tf_serving_manager
@@ -24,6 +25,8 @@ INPUT_DATA_SOURCE = os.getenv("INPUT_DATA_SOURCE", "kafka")               # "kaf
 
 if PREDICTION_DESTINATION == "kafka":
     KAFKA_OUTPUT_TOPIC = os.getenv("KAFKA_OUTPUT_TOPIC", "INTRA_test_topic1")
+
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 api_url = f"http://{API_HOST}:{PORT}"
@@ -327,10 +330,12 @@ def help_ui():
 
 @app.route('/github/webhook', methods=["POST"])
 def github_webhook():
-    event = request.headers.get("X-Github-Event")
+    print("[WEBHOOK] Webhook called")
+
+    event = request.headers.get("X-GitHub-Event")
 
     if event != "push":
-        return jsonify({"statur": "ignored"}), 200
+        return jsonify({"status": f"received {event}"}), 200
     
     # Only react to push events
     payload = request.get_json()
@@ -339,7 +344,16 @@ def github_webhook():
     return jsonify({"status": "processed"}), 200
 
 def handle_push_event(payload):
-    initialize_models()
+    logger.info(f"Received Webhook payload: {payload}")
+    logger.info(f"Commit Changes: {get_commit_changes(payload)}")
+
+def get_commit_changes(payload):
+    added, removed, modified = set(), set(), set()
+    for commit in payload.get("commits", []):
+        added.update(commit.get("added", []))
+        removed.update(commit.get("removed", []))
+        modified.update(commit.get("modified", []))
+    return added, removed, modified
 
 
 def start_monitoring():
