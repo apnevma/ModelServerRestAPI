@@ -149,3 +149,24 @@ def send_message_to_prediction_destination(message, model_name):
 
     logger.error(f"Unknown PREDICTION_DESTINATION: {PREDICTION_DESTINATION}")
     return False
+
+
+def extract_model_names(paths, models_root="models"):
+    models = set()
+
+    for path in paths:
+        parts = path.split("/")
+        if len(parts) >= 2 and parts[0] == models_root:
+            models.add(parts[1])
+
+    return models
+
+def get_model_changes(file_changes):
+
+    model_changes = {
+        "added": extract_model_names(file_changes["added"]),
+        "removed": extract_model_names(file_changes["removed"]),
+        "modified": extract_model_names(file_changes["modified"]),
+    }
+
+    return model_changes

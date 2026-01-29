@@ -9,7 +9,7 @@ import logging
 
 # Local imports
 import model_detector, tf_serving_manager
-from utils import send_message_to_prediction_destination
+from utils import send_message_to_prediction_destination, get_model_changes
 from github_client import list_github_models, download_github_model
 from messaging.kafka_producer import send_kafka_message
 from messaging.kafka_consumer import start_kafka_consumer, stop_kafka_consumer
@@ -335,6 +335,7 @@ def github_webhook():
     event = request.headers.get("X-GitHub-Event")
 
     if event != "push":
+        logger.info(f"Received {event} (not push event!)")
         return jsonify({"status": f"received {event}"}), 200
     
     # Only react to push events
@@ -345,15 +346,24 @@ def github_webhook():
 
 def handle_push_event(payload):
     logger.info(f"Received Webhook payload: {payload}")
-    logger.info(f"Commit Changes: {get_commit_changes(payload)}")
+    file_changes = get_commit_changes(payload)
+    logger.info(f"Commit Changes: {file_changes}")
+    model_changes = get_model_changes(file_changes)
+    logger.info(f"Model Changes: {model_changes}")
 
 def get_commit_changes(payload):
-    added, removed, modified = set(), set(), set()
+    changes = {
+        "added": set(),
+        "removed": set(),
+        "modified": set(),
+    }
+
     for commit in payload.get("commits", []):
-        added.update(commit.get("added", []))
-        removed.update(commit.get("removed", []))
-        modified.update(commit.get("modified", []))
-    return added, removed, modified
+        changes["added"].update(commit.get("added", []))
+        changes["removed"].update(commit.get("removed", []))
+        changes["modified"].update(commit.get("modified", []))
+
+    return changes
 
 
 def start_monitoring():
