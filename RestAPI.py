@@ -6,14 +6,13 @@ import signal, sys
 import json
 from threading import Thread
 import logging
+import shutil
 
 # Local imports
 import model_detector, tf_serving_manager
 from utils import send_message_to_prediction_destination, get_model_changes
 from github_client import list_github_models, download_github_model
-from messaging.kafka_producer import send_kafka_message
 from messaging.kafka_consumer import start_kafka_consumer, stop_kafka_consumer
-from messaging.mqtt_producer import send_mqtt_message
 from messaging.mqtt_consumer import start_mqtt_consumer, stop_mqtt_consumer
 
 API_HOST = os.getenv("API_HOST", "localhost")
@@ -334,8 +333,11 @@ def github_webhook():
 
     event = request.headers.get("X-GitHub-Event")
 
-    if event != "push":
-        logger.info(f"Received {event} (not push event!)")
+    if event == "ping":
+        logger.info("[GITHUB] Ping received")
+        return jsonify({"status": "pong"}), 200
+    elif event != "push":
+        logger.info(f"[GITHUB] Received {event}")
         return jsonify({"status": f"received {event}"}), 200
     
     # Only react to push events
@@ -345,11 +347,90 @@ def github_webhook():
     return jsonify({"status": "processed"}), 200
 
 def handle_push_event(payload):
-    logger.info(f"Received Webhook payload: {payload}")
+    # (optional) branch filter
+    if payload.get("ref") != "refs/heads/main":
+        logger.info("[GITHUB] Push ignored (non-main branch)")
+        return
+    
     file_changes = get_commit_changes(payload)
-    logger.info(f"Commit Changes: {file_changes}")
     model_changes = get_model_changes(file_changes)
     logger.info(f"Model Changes: {model_changes}")
+
+    if not any(model_changes.values()):
+        logger.info("[GITHUB] No model-level changes detected")
+        return
+
+    handle_model_changes(model_changes)
+
+
+def handle_model_changes(model_changes):
+    added = model_changes["added"]
+    removed = model_changes["removed"]
+    modified = model_changes["modified"]
+
+    # 1. Handle removals
+    for model in removed:
+        logger.info(f"[GITHUB] Model removed from repo: {model}")
+
+        # deactivate if active
+        if model in active_models:
+            logger.info(f"[GITHUB] Deactivating active model '{model}'")
+            try:
+                tf_serving_manager.stop_container(model)
+            except:
+                pass
+            del active_models[model]
+
+        # remove from available models
+        available_models.pop(model, None)
+
+        # delete from container if present
+        container_path = os.path.join("/models", model)
+        try:
+            if os.path.exists(container_path):
+                if os.path.isdir(container_path):
+                    shutil.rmtree(container_path)
+                    logger.info(f"[GITHUB][DELETED] Directory {container_path} removed")
+                else:
+                    os.remove(container_path)
+                    logger.info(f"[GITHUB][DELETED] File {container_path} removed")
+        except Exception as e:
+            logger.error(f"[ERROR][DELETED] Failed to remove {container_path}: {e}")
+            
+
+    # 2. Handle additions & updates
+    to_update = (added | modified) - removed
+
+    if to_update:
+        logger.info("[GITHUB] Refreshing model metadata from repo")
+
+        try:
+            github_entries = list_github_models()
+        except Exception as e:
+            logger.error(f"[GITHUB][ERROR] Failed to list GitHub models: {e}")
+            return
+
+        for model in to_update:
+            entry = github_entries.get(model)
+            if not entry:
+                logger.warning(f"[GITHUB] Model '{model}' not found in GitHub listing")
+                continue
+
+            available_models[model] = entry
+            logger.info(f"[GITHUB] Metadata updated for model '{model}'")
+
+            # If active, safest policy is to deactivate
+            if model in active_models:
+                logger.info(
+                    f"[GITHUB] Active model '{model}' changed upstream → deactivating"
+                )
+                try:
+                    tf_serving_manager.stop_container(model)
+                except:
+                    pass
+                del active_models[model]
+
+
 
 def get_commit_changes(payload):
     changes = {
@@ -404,7 +485,9 @@ signal.signal(signal.SIGINT, cleanup)
 
 if __name__ == '__main__':
     initialize_models()
-    start_monitoring()       # Start the watchdog in the background to detect changes
+
+    if MODEL_SOURCE == "local_filesystem":
+        start_monitoring()       # Start the watchdog in the background to detect changes
     
     if INPUT_DATA_SOURCE == "kafka":
         start_kafka_consumer()   # Start Kafka consumer in a background thread
