@@ -15,3 +15,4 @@ messaging/test_mqtt_input.py
 messaging/test_kafka_input.py
 
 mosquitto.conf
+migration_guide.md
