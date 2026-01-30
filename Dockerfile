@@ -20,4 +20,4 @@ COPY messaging/ /app/messaging
 EXPOSE 8086
 
 # Start Flask API
-CMD ["python", "RestAPI.py"]
+CMD ["python", "rest_api.py"]
