@@ -1,168 +1,677 @@
 # ML Models Serving Tool
 
-A Flask-based REST API for **dynamic machine learning model serving**, supporting Scikit-learn, TensorFlow/Keras, TensorFlow SavedModels, and PyTorch.  
+A Flask-based REST API for **dynamic machine learning model serving** with support for Scikit-learn, TensorFlow/Keras, TensorFlow SavedModels, and PyTorch. The system provides flexible deployment options with automatic model discovery, lifecycle management, and real-time synchronization.
 
-The system operates in two distinct modes, controlled by an environment variable:
-* `MODEL_SOURCE=github` → models are fetched on demand from a GitHub repository
-* `MODEL_SOURCE=local_filesystem` → models are read from a local models/ folder and kept in sync via a dedicated container  
-
-The API dynamically loads models, exposes prediction endpoints, and provides a web-based UI for inspecting active models and their metadata.
-
-## Operating Modes
-### 1. GitHub Mode (`MODEL_SOURCE=github`)
-In this mode, the API treats a GitHub repository as a remote model registry.
-
-**Behavior**
-* The API scans the `models/` folder inside the GitHub repository
-* All detected models are added to `available_models`
-* Models are inactive by default
-* A model is downloaded and loaded only when explicitly activated
-
-**Lifecycle**
-1. Model appears in `available_models`
-2. User activates the model via API
-3. Model is downloaded into `/models`
-4. Model is loaded or deployed
-5. A prediction endpoint is registered
-
-### 2. Local Filesystem Mode (`MODEL_SOURCE=local_filesystem`)
-In this mode, the API serves models from a local models/ directory.
-
-**Behavior**
-* On startup, the API scans the `models/` folder
-* All detected models are immediately added to `available_models`
-* No GitHub access is required
-* Models can be activated without downloading
+## Table of Contents
+- [Features](#features)
+- [Operating Modes](#operating-modes)
+- [Architecture](#architecture)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [API Reference](#api-reference)
+- [GitHub Webhook Integration](#github-webhook-integration)
+- [Event-Driven Integration](#event-driven-integration)
+- [Testing](#testing)
 
 ## Features
 
-- **Dynamic model serving**  
-  Automatically detects and loads models from the `models/` folder.
+### Core Capabilities
+- **Dynamic model serving** - Automatically discovers and serves models without requiring restarts
+- **Multi-framework support** - Works with Scikit-learn (`.pkl`, `.joblib`), TensorFlow/Keras (`.h5`), TensorFlow SavedModels, and PyTorch models
+- **Flexible deployment** - Choose between GitHub-based or local filesystem model storage
+- **Model lifecycle management** - Explicit activation/deactivation control for efficient resource usage
+- **TensorFlow Serving integration** - Automatic containerized deployment for TF SavedModels
+- **Real-time synchronization** - Automatic updates via GitHub webhooks or filesystem monitoring
+- **Event-driven architecture** - Kafka and MQTT integration for seamless data pipeline integration
+- **Web-based UI** - Interactive interface for exploring available models and endpoints
+- **Thread-safe operations** - Concurrent request handling with safe state management
 
-- **Automatic endpoint creation**  
-  Each model is served under `/model_name` (e.g., `/rf_model`, `/global_model`).
+### Model Management
+- **On-demand loading** - Models are downloaded and loaded only when activated
+- **Automatic endpoint creation** - Each active model gets its own prediction endpoint
+- **Model introspection** - Provides input shape and data type information for debugging
+- **Graceful error handling** - Returns expected input format when predictions fail
+- **File stability checks** - Prevents loading incomplete model files
 
-- **TF Serving integration**  
-  SavedModel folders are automatically served via individual Docker containers running TensorFlow Serving. Flask endpoints proxy requests to the corresponding TF Serving URL.
+## Operating Modes
 
-- **PyTorch folder-based models**  
-  Drop-in folders containing `model.pt` (or `.pth`) and `model_class.py` are supported. The API dynamically loads the class and weights.
+The system operates in two distinct modes, controlled by the `MODEL_SOURCE` environment variable:
 
-- **File stability check**  
-  Ensures a model file/folder is fully written before loading it, preventing `PermissionError`.
+### 1. GitHub Mode (`MODEL_SOURCE=github`)
 
-- **Multi-framework support**  
-  - Scikit-learn models (`.pkl`, `.joblib`)  
-  - TensorFlow/Keras models (`.h5`)  
-  - TensorFlow SavedModels (`./models/model_name/version/saved_model.pb`) served via TF Serving
-  - PyTorch folder-based models (`model.pt` + `model_class.py`)
+In this mode, the API uses a GitHub repository as a remote model registry with automatic synchronization.
 
-- **Model info introspection**  
-  Provides input shape and expected data type for each local model.  
-  If a prediction request fails due to wrong input format, the API returns the model’s input requirements.
+**How it works:**
+1. API scans the `models/` folder in the specified GitHub repository
+2. All detected models are registered as **available** (but inactive)
+3. When a model is activated via API, it's downloaded to `/models` and loaded
+4. GitHub webhooks automatically sync model changes (additions, updates, deletions)
+5. Active models are deactivated when their source files are updated or removed
 
-- **JSON predictions**  
-  Predictions are returned in structured JSON format.
+**Use cases:**
+- Centralized model management across multiple deployments
+- Continuous model deployment pipelines
+- Team collaboration with version-controlled models
+- Cloud-native deployments
 
-- **CORS enabled**  
-  Easy integration with web clients.
+**Webhook behavior:**
+- **Model added**: Registered as available (requires manual activation)
+- **Model modified**: Automatically deactivated if active (requires re-activation)
+- **Model deleted**: Automatically deactivated and removed from registry
 
+### 2. Local Filesystem Mode (`MODEL_SOURCE=local_filesystem`)
 
-## Interactive Help Page (UI)
-A **web-based Help page** is now available to easily browse all loaded models and their endpoints.
+In this mode, the API serves models from a local directory with real-time filesystem monitoring.
 
-### Access it 
+**How it works:**
+1. On startup, API scans the local `models/` folder
+2. All detected models are registered as **available** (but inactive)
+3. Filesystem watcher detects changes in real-time
+4. Models can be activated without downloading
 
-- **Locally** (after following the installation and usage instructions)  
-  [http://localhost:8086/help/ui](http://localhost:8086/help/ui)
+**Use cases:**
+- Development and testing environments
+- Edge deployments with locally stored models
+- Air-gapped environments without internet access
+- Direct model file management
 
-- **Or through the Datacrop VM**  
-  [http://168.119.235.102:8086/help/ui](http://168.119.235.102:8086/help/ui)
+## Architecture
 
-### Features
-* Displays all detected models from the `/models/` directory
-* Flip-card design to show model name on front and endpoint on back
-* Descriptive text and clean layout
-* Responsive, modern UI (using custom CSS)
+The system is built with a modular, maintainable architecture:
+
+```
+┌─────────────────┐
+│   Flask API     │ ← HTTP endpoints for model management & predictions
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    │ Registry │ ← Centralized thread-safe state management
+    └────┬────┘
+         │
+    ┌────┴────────────────────────┐
+    │                             │
+┌───┴────────┐          ┌────────┴─────┐
+│ Lifecycle  │          │ Sync Handler │ ← Unified change processing
+│ Manager    │          └──────┬───────┘
+└────────────┘                 │
+                     ┌─────────┴──────────┐
+                     │                    │
+              ┌──────┴────────┐    ┌─────┴────────┐
+              │ GitHub Webhook│    │  Filesystem  │
+              │   Handler     │    │   Watcher    │
+              └───────────────┘    └──────────────┘
+```
+
+### Key Components
+
+- **model_registry.py** - Thread-safe state management for available and active models
+- **model_lifecycle.py** - Handles model activation, deactivation, and cleanup
+- **sync_handlers.py** - Unified logic for processing model changes from any source
+- **webhook_handler.py** - Processes GitHub webhook events for model synchronization
+- **filesystem_watcher.py** - Monitors local directory for model changes
+- **RestAPI.py** - Flask application with prediction and management endpoints
 
 ## Installation
 
-1. Clone the repository:
+### Prerequisites
+
+- Python 3.8+
+- Docker and Docker Compose (for TensorFlow Serving)
+- Git (for GitHub mode)
+
+### Setup
+
+1. **Clone the repository:**
 ```bash
-git clone <repo_url>
-cd ModelServerrRestAPI
+git clone https://github.com/apnevma/ml-serving-tool.git
+cd ml-serving-tool
 ```
 
-2. Create a `models/` folder and place your models in it. Examples:
+3. **For local filesystem mode, create the models directory:**
 ```bash
+mkdir models
+```
+
+4. **Prepare your models** (examples):
+```
 models/
 │
-├── rf_model.pkl            # Scikit Learn .pkl model
+├── rf_model.pkl                 # Scikit-learn model
 │
-├── fire_savedmodel/        # TensorFlow SavedModel folder
+├── keras_model.h5               # Keras model
+│
+├── fire_savedmodel/             # TensorFlow SavedModel
 │   └── 1/
 │       ├── assets/
 │       ├── variables/
-│       ├── fingerprint.pb
 │       └── saved_model.pb
 │   
-└── fire_pytorch/           # PyTorch folder-based model
+└── fire_pytorch/                # PyTorch model
     ├── model.pt
     └── model_class.py
-
 ```
-## Docker Setup
 
-1. Make sure you have Docker and Docker Compose installed and running on your machine.
+5. **Create Docker network:**
+```bash
+docker network create model_server_net
+```
 
-2. Create Docker network  
-  All containers communicate via a dedicated network:
-    ```bash
-    docker network create model_server_net
-    ```
+6. **Build and start containers:**
+```bash
+docker-compose up -d --build
+```
 
-3. Build and start containers
-    ```bash
-    docker-compose up -d --build
-    ```
-    * model_server_api detects all models and exposes endpoints.
-    * Each TensorFlow SavedModel is served via its own TF Serving container automatically.
-    * Communication is internal via Docker network. No extra ports needed for TF Serving containers.
+## Configuration
 
+Configure the system using environment variables:
+
+### Core Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MODEL_SOURCE` | `local_filesystem` | Model source: `github` or `local_filesystem` |
+| `MODELS_PATH` | `/models` | Local directory for model storage |
+| `API_HOST` | `localhost` | Host address for the API server |
+| `PORT` | `8086` | Port for the API server |
+
+### GitHub Mode Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GITHUB_REPO` | `apnevma/models-to-test` | GitHub repository (format: `owner/repo`) |
+| `GITHUB_TOKEN` | - | GitHub personal access token (for private repos) |
+
+### Messaging Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `INPUT_DATA_SOURCE` | `kafka` | Input source: `kafka` or `mqtt` |
+| `PREDICTION_DESTINATION` | `kafka` | Output destination: `kafka` or `mqtt` |
+| `KAFKA_OUTPUT_TOPIC` | `INTRA_test_topic1` | Kafka topic for predictions |
+
+### Example Configuration
+
+**Local filesystem mode:**
+```bash
+export MODEL_SOURCE=local_filesystem
+export MODELS_PATH=/path/to/models
+export PORT=8086
+```
+
+**GitHub mode:**
+```bash
+export MODEL_SOURCE=github
+export GITHUB_REPO=your-org/ml-models
+export GITHUB_TOKEN=ghp_your_token_here
+export PORT=8086
+```
 
 ## Usage
-### Start the server
+
+### Starting the Server
+
+**Local development:**
 ```bash
 python RestAPI.py
 ```
-The API will run on:
-http://127.0.0.1:8086
 
-### Test a model
-You can test a loaded model using the provided `prediction_test.py` script. For example, to test the `fire_nn` model:  
+**With Docker Compose:**
+```bash
+docker-compose up -d
+```
+
+The API will be available at `http://localhost:8086`
+
+### Managing Models
+
+#### 1. List all available models
+```bash
+curl http://localhost:8086/models
+```
+
+Response:
+```json
+[
+  {
+    "model_name": "rf_model",
+    "status": "inactive",
+    "model_path": "/models/rf_model.pkl",
+    "predict_url": null
+  },
+  {
+    "model_name": "fire_nn",
+    "status": "active",
+    "model_path": "/models/fire_nn.h5",
+    "predict_url": "http://localhost:8086/predict/fire_nn"
+  }
+]
+```
+
+#### 2. Check model status
+```bash
+curl http://localhost:8086/status/rf_model
+```
+
+#### 3. Activate a model
+```bash
+curl -X POST http://localhost:8086/activate/rf_model
+```
+
+Response:
+```json
+{
+  "message": "Model rf_model activated",
+  "predict_endpoint": "/predict/rf_model"
+}
+```
+
+#### 4. Deactivate a model
+```bash
+curl -X POST http://localhost:8086/deactivate/rf_model
+```
+
+#### 5. Make a prediction
+```bash
+curl -X POST http://localhost:8086/predict/fire_nn \
+  -H "Content-Type: application/json" \
+  -d '{"input": [[70.5, 20.0, 76.0]]}'
+```
+
+Response:
+```json
+{
+  "status": "sent",
+  "destination": "kafka",
+  "prediction": [[0.85, 0.15]]
+}
+```
+
+### Web Interface
+
+Access the interactive help page at:
+- **Local**: http://localhost:8086/help/ui
+- **Production**: http://your-server:8086/help/ui
+
+Features:
+- Browse all available models
+- View model endpoints and metadata
+- Flip-card design with clean, modern UI
+- Real-time status indicators
+
+## API Reference
+
+### Model Management Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/models` | GET | List all available models with status |
+| `/status/<model_name>` | GET | Get status of a specific model |
+| `/activate/<model_name>` | POST | Activate a model for serving |
+| `/deactivate/<model_name>` | POST | Deactivate an active model |
+
+### Prediction Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/predict/<model_name>` | POST | Make predictions with an active model |
+
+**Request format:**
+```json
+{
+  "input": [[feature1, feature2, ...]]
+}
+```
+
+### Information Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/test` | GET | Health check endpoint |
+| `/help` | GET | JSON documentation of active models |
+| `/help/ui` | GET | Web-based interactive help page |
+
+### Webhook Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/github/webhook` | POST | GitHub webhook receiver for model sync |
+
+## GitHub Webhook Integration
+
+Webhooks enable automatic synchronization when models are pushed to your GitHub repository.
+
+### Setup Instructions
+
+#### 1. Configure GitHub Webhook
+
+In your GitHub repository:
+
+1. Go to **Settings** → **Webhooks** → **Add webhook**
+2. Configure the webhook:
+   - **Payload URL**: `http://your-server:8086/github/webhook`
+   - **Content type**: `application/json`
+   - **Secret**: (optional but recommended - add signature verification)
+   - **Events**: Select "Just the push event"
+3. Click **Add webhook**
+
+#### 2. Expose Your Endpoint (if testing locally)
+
+If running locally, use a tunnel service like ngrok:
+
+```bash
+ngrok http 8086
+```
+
+Then use the ngrok URL as your webhook payload URL:
+```
+https://abc123.ngrok.io/github/webhook
+```
+
+#### 3. Test the Webhook
+
+Push a model to your repository:
+```bash
+# Add a new model
+git add models/new_model.pkl
+git commit -m "Add new_model"
+git push origin main
+```
+
+Check the logs:
+```bash
+docker logs model_server_api
+```
+
+You should see:
+```
+[WEBHOOK] Push received
+[WEBHOOK] Model changes detected: {'added': {'new_model'}, 'removed': set(), 'modified': set()}
+[SYNC] Model added: new_model
+[REGISTRY] Registered model 'new_model'
+```
+
+### Webhook Behavior
+
+The webhook handler processes different types of model changes:
+
+**Model Added:**
+- Model is registered as available
+- Status: inactive (requires activation via API)
+- Ready for use immediately after activation
+
+**Model Modified:**
+- Metadata is refreshed from GitHub
+- If model is active, it's automatically deactivated
+- Requires re-activation to load the updated version
+
+**Model Deleted:**
+- Model is deactivated if active
+- Removed from available models registry
+- Local files are cleaned up
+
+### Security Considerations
+
+For production deployments:
+
+1. **Use HTTPS** - Configure SSL/TLS for your API server
+2. **Verify webhook signatures** - Validate requests are from GitHub
+3. **Restrict branches** - Only process pushes to specific branches (default: `main`)
+4. **Rate limiting** - Implement rate limits on the webhook endpoint
+5. **Authentication** - Use GitHub tokens for private repositories
+
+### Troubleshooting Webhooks
+
+**Webhook not triggering:**
+- Check GitHub webhook delivery status (Settings → Webhooks → Recent Deliveries)
+- Verify the payload URL is accessible from the internet
+- Check firewall and network settings
+
+**Models not updating:**
+- Check logs for `[WEBHOOK]` and `[SYNC]` messages
+- Verify the repository structure matches expected format
+- Ensure `MODEL_SOURCE=github` is set
+
+**Permission errors:**
+- Verify GitHub token has repository read access
+- Check file permissions in `/models` directory
+
+## Event-Driven Integration
+
+The system integrates seamlessly with event-driven architectures via Kafka and MQTT.
+
+### Workflow
+
+```
+┌──────────┐      ┌─────────────────┐      ┌──────────┐
+│  Kafka/  │─────→│  ML Serving     │─────→│  Kafka/  │
+│  MQTT    │      │  Tool           │      │  MQTT    │
+│ (Input)  │      │  (Prediction)   │      │ (Output) │
+└──────────┘      └─────────────────┘      └──────────┘
+```
+
+### Kafka Configuration
+
+**Input consumer:**
+```bash
+export INPUT_DATA_SOURCE=kafka
+export KAFKA_INPUT_TOPIC=ml_input_data
+export KAFKA_SERVERS=<kafka_server_ip>
+```
+
+**Output producer:**
+```bash
+export PREDICTION_DESTINATION=kafka
+export KAFKA_OUTPUT_TOPIC=ml_predictions
+```
+
+### MQTT Configuration
+
+**Input subscriber:**
+```bash
+export INPUT_DATA_SOURCE=mqtt
+export MQTT_BROKER=<mqtt_broker>
+export MQTT_PORT=<mqtt_port>
+export MQTT_INPUT_TOPIC=ml/input
+```
+
+**Output publisher:**
+```bash
+export PREDICTION_DESTINATION=mqtt
+export MQTT_OUTPUT_TOPIC=ml/predictions
+```
+
+### Message Format
+
+**Input message:**
+```json
+{
+  "model_name": "fire_nn",
+  "input": [[70.5, 20.0, 76.0]]
+}
+```
+
+**Output message (success):**
+```json
+{
+  "model": "fire_nn",
+  "status": "success",
+  "prediction": [[0.85, 0.15]],
+  "timestamp": "2026-01-30T12:34:56Z"
+}
+```
+
+**Output message (error):**
+```json
+{
+  "model": "fire_nn",
+  "status": "error",
+  "error": "Input shape mismatch",
+  "expected_input": {"shape": [3], "type": "float32"}
+}
+```
+
+## Testing
+
+### Manual Testing with cURL
+
+Test a prediction endpoint:
+```bash
+curl -X POST http://localhost:8086/predict/fire_nn \
+  -H "Content-Type: application/json" \
+  -d '{"input": [[70.5, 20.0, 76.0]]}'
+```
+
+### Python Testing Script
+
+Use the provided test script:
+
 ```python
 import requests
 
-# URL of the local model endpoint
-url = "http://localhost:8086/fire_nn"
-
-# Example input data (features = [temperature, humidity, soundLevel])
+# Configuration
+url = "http://localhost:8086/predict/fire_nn"
 data = {
     "input": [[70.5, 20.0, 76.0]]
 }
 
 try:
-    # Send POST request
     response = requests.post(url, json=data)
-    response.raise_for_status()  # Raise exception if HTTP error
-
-    # Get JSON result
+    response.raise_for_status()
+    
     prediction = response.json()
-    print(prediction)
-
+    print("Prediction:", prediction)
+    
 except requests.exceptions.RequestException as e:
-    print("Error communicating with server:", e)
+    print("Error:", e)
 ```
-#### Notes:
-  * Replace `"fire_nn"` with the name of the model you want to test.
-  * Input data should match the model’s expected format. If it doesn’t, the API will return the expected input info.
+
+### Testing Webhooks Locally
+
+1. **Start the server:**
+```bash
+python RestAPI.py
+```
+
+2. **Use ngrok for tunneling:**
+```bash
+ngrok http 8086
+```
+
+3. **Configure webhook in GitHub** with the ngrok URL
+
+4. **Push a model change:**
+```bash
+echo "# test" >> models/test_model.pkl
+git add models/test_model.pkl
+git commit -m "Test webhook"
+git push
+```
+
+5. **Verify in logs:**
+```bash
+tail -f logs/app.log
+```
+
+### Testing Model Lifecycle
+
+```bash
+# List models
+curl http://localhost:8086/models
+
+# Activate a model
+curl -X POST http://localhost:8086/activate/rf_model
+
+# Check status
+curl http://localhost:8086/status/rf_model
+
+# Make prediction
+curl -X POST http://localhost:8086/predict/rf_model \
+  -H "Content-Type: application/json" \
+  -d '{"input": [[1.0, 2.0, 3.0]]}'
+
+# Deactivate
+curl -X POST http://localhost:8086/deactivate/rf_model
+```
+
+## Docker Deployment
+
+### Docker Compose Configuration
+
+The system uses Docker Compose for containerized deployment:
+
+```yaml
+services:
+  model_server_api:
+    build: .
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./models:/models
+    environment:
+      - MODEL_SOURCE=github
+      - GITHUB_REPO=your-org/ml-models
+    networks:
+      - model_server_net
+
+networks:
+  model_server_net:
+    external: true
+```
+
+### TensorFlow Serving Integration
+
+TensorFlow SavedModels are automatically deployed in individual TF Serving containers:
+
+- Each SavedModel gets its own container
+- Flask API proxies requests to TF Serving
+- Internal communication via Docker network
+- Automatic cleanup when models are deactivated
+
+## Logging
+
+The system provides comprehensive logging with clear prefixes:
+
+```
+[INIT]      - Initialization and startup
+[REGISTRY]  - Model registry operations
+[LIFECYCLE] - Model activation/deactivation
+[SYNC]      - Synchronization events
+[WEBHOOK]   - GitHub webhook events
+[WATCHER]   - Filesystem monitoring
+[SHUTDOWN]  - Cleanup and shutdown
+```
+
+View logs:
+```bash
+# Docker
+docker logs -f model_server_api
+
+# Local
+tail -f logs/app.log
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Models not appearing:**
+- Verify `MODELS_PATH` is correct
+- Check file permissions
+- Ensure model files are complete and valid
+
+**Activation fails:**
+- Check model file format is supported
+- Verify sufficient memory/disk space
+- Review logs for specific errors
+
+**Predictions fail:**
+- Verify input format matches model expectations
+- Check model is activated (`/status/<model_name>`)
+- Review model info in `/help` endpoint
+
+**Webhook not working:**
+- Verify endpoint is publicly accessible
+- Check GitHub webhook delivery logs
+- Ensure `MODEL_SOURCE=github`
+
