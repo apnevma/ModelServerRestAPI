@@ -7,7 +7,7 @@ from threading import Thread
 from watchdog.observers.polling import PollingObserver as Observer
 from watchdog.events import FileSystemEventHandler
 
-from sync_handlers import get_sync_handler
+from api.sync_handlers import get_sync_handler
 
 logger = logging.getLogger(__name__)
 

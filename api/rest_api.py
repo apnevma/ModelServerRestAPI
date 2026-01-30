@@ -10,12 +10,12 @@ import json
 import logging
 
 # Local imports - new modular structure
-from model_registry import get_registry
-from model_lifecycle import get_lifecycle_manager
-from webhook_handler import get_webhook_handler
-from filesystem_watcher import get_filesystem_monitor
-from github_client import list_github_models
-import model_detector
+from api.model_registry import get_registry
+from api.model_lifecycle import get_lifecycle_manager
+from api.webhook_handler import get_webhook_handler
+from api.filesystem_watcher import get_filesystem_monitor
+from api.github_client import list_github_models
+import model_handlers.model_detector as model_detector
 from utils import send_message_to_prediction_destination
 from messaging.kafka_consumer import start_kafka_consumer, stop_kafka_consumer
 from messaging.mqtt_consumer import start_mqtt_consumer, stop_mqtt_consumer
@@ -37,8 +37,13 @@ if PREDICTION_DESTINATION == "kafka":
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Flask app
-app = Flask(__name__)
+# Get the project root directory (parent of api/)
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Initialize Flask app with explicit paths
+app = Flask(__name__,
+            template_folder=os.path.join(project_root, 'templates'),
+            static_folder=os.path.join(project_root, 'static'))
 api_url = f"http://{API_HOST}:{PORT}"
 
 # Get singleton instances

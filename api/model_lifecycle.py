@@ -6,10 +6,10 @@ import os
 import shutil
 from typing import Optional, Tuple
 
-import model_detector
+import model_handlers.model_detector as model_detector
 import tf_serving_manager
-from github_client import download_github_model
-from model_registry import get_registry
+from api.github_client import download_github_model
+from api.model_registry import get_registry
 
 logger = logging.getLogger(__name__)
 

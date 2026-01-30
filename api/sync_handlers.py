@@ -5,8 +5,8 @@ regardless of whether the change comes from filesystem, GitHub, or API.
 """
 import logging
 from typing import Set, Dict
-from model_registry import get_registry
-from model_lifecycle import get_lifecycle_manager
+from api.model_registry import get_registry
+from api.model_lifecycle import get_lifecycle_manager
 
 logger = logging.getLogger(__name__)
 

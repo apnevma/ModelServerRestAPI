@@ -1,8 +1,8 @@
 import os
-import tensorflow_models
-import scikit_models
-import pytorch_models
-import savedmodel
+import model_handlers.tensorflow_models as tensorflow_models
+import model_handlers.scikit_models as scikit_models
+import model_handlers.pytorch_models as pytorch_models
+import model_handlers.savedmodel as savedmodel
 from utils import make_json_serializable
 
 

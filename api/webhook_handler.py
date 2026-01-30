@@ -3,9 +3,9 @@ GitHub webhook event handlers.
 """
 import logging
 from typing import Dict, Set
-from github_client import list_github_models
-from model_registry import get_registry
-from sync_handlers import get_sync_handler
+from api.github_client import list_github_models
+from api.model_registry import get_registry
+from api.sync_handlers import get_sync_handler
 from utils import get_model_changes
 
 logger = logging.getLogger(__name__)
