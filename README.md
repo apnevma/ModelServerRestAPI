@@ -49,11 +49,6 @@ In this mode, the API uses a GitHub repository as a remote model registry with a
 4. GitHub webhooks automatically sync model changes (additions, updates, deletions)
 5. Active models are deactivated when their source files are updated or removed
 
-**Use cases:**
-- Centralized model management across multiple deployments
-- Continuous model deployment pipelines
-- Team collaboration with version-controlled models
-- Cloud-native deployments
 
 **Webhook behavior:**
 - **Model added**: Registered as available (requires manual activation)
@@ -70,11 +65,6 @@ In this mode, the API serves models from a local directory with real-time filesy
 3. Filesystem watcher detects changes in real-time
 4. Models can be activated without downloading
 
-**Use cases:**
-- Development and testing environments
-- Edge deployments with locally stored models
-- Air-gapped environments without internet access
-- Direct model file management
 
 ## Architecture
 
@@ -116,51 +106,64 @@ The system is built with a modular, maintainable architecture:
 
 ### Prerequisites
 
-- Python 3.8+
-- Docker and Docker Compose (for TensorFlow Serving)
+- Docker and Docker Compose
 - Git (for GitHub mode)
 
 ### Setup
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/apnevma/ml-serving-tool.git
-cd ml-serving-tool
+git clone <repo_url>
+cd ModelServerRestAPI
 ```
 
-3. **For local filesystem mode, create the models directory:**
+2. **Create Docker network:**
 ```bash
-mkdir models
+docker network create model_server_net
 ```
 
-4. **Prepare your models** (examples):
+3. **Configure environment variables:**
+
+Create a `.env` file in the project root:
+
+```bash
+# API Configuration
+PORT=8086
+API_HOST=0.0.0.0
+MODELS_PATH=/models
+
+# Model Source Configuration
+MODEL_SOURCE=github                    # or "local_filesystem"
+GITHUB_REPO=your-org/ml-models
+GITHUB_BRANCH=main
+GITHUB_TOKEN=ghp_your_token_here       # Optional for public repos
+
+```
+
+4. **Prepare your models:**
+
+For **local filesystem mode**, create a `models/` directory and add your models:
 ```
 models/
 │
 ├── rf_model.pkl                 # Scikit-learn model
-│
 ├── keras_model.h5               # Keras model
-│
 ├── fire_savedmodel/             # TensorFlow SavedModel
 │   └── 1/
-│       ├── assets/
-│       ├── variables/
 │       └── saved_model.pb
-│   
 └── fire_pytorch/                # PyTorch model
     ├── model.pt
     └── model_class.py
 ```
 
-5. **Create Docker network:**
-```bash
-docker network create model_server_net
-```
+For **GitHub mode**, ensure your repository has a `models/` folder with the same structure.
 
-6. **Build and start containers:**
+5. **Build and start containers:**
 ```bash
 docker-compose up -d --build
 ```
+
+The API will be available at `http://localhost:8086`
 
 ## Configuration
 
@@ -211,14 +214,14 @@ export PORT=8086
 
 ### Starting the Server
 
-**Local development:**
+**GitHub mode:**
 ```bash
-python RestAPI.py
+docker-compose up -d --build
 ```
 
-**With Docker Compose:**
+**Local filesystem mode:**
 ```bash
-docker-compose up -d
+docker-compose --profile local_filesystem up -d --build
 ```
 
 The API will be available at `http://localhost:8086`
@@ -289,9 +292,7 @@ Response:
 
 ### Web Interface
 
-Access the interactive help page at:
-- **Local**: http://localhost:8086/help/ui
-- **Production**: http://your-server:8086/help/ui
+Access the interactive help page at `http://localhost:8086/help/ui`
 
 Features:
 - Browse all available models
@@ -548,9 +549,9 @@ except requests.exceptions.RequestException as e:
 
 ### Testing Webhooks Locally
 
-1. **Start the server:**
+1. **Start the system:**
 ```bash
-python RestAPI.py
+docker-compose up -d --build
 ```
 
 2. **Use ngrok for tunneling:**
@@ -570,7 +571,7 @@ git push
 
 5. **Verify in logs:**
 ```bash
-tail -f logs/app.log
+docker logs -f model_server_api
 ```
 
 ### Testing Model Lifecycle
@@ -596,37 +597,84 @@ curl -X POST http://localhost:8086/deactivate/rf_model
 
 ## Docker Deployment
 
-### Docker Compose Configuration
+The system uses Docker Compose for containerized deployment with two services:
 
-The system uses Docker Compose for containerized deployment:
+### Services Overview
 
+**1. flask_api (model_server_api)**
+- Main API server for model management and predictions
+- Exposes port 8086
+- Mounts Docker socket for TensorFlow Serving container management
+- Uses named volume `models_data` for persistent model storage
+
+**2. model_syncer** (local filesystem mode only)
+- Syncs models from host `./models/` to the shared Docker volume
+- Only active when using `MODEL_SOURCE=local_filesystem`
+- Activated via Docker Compose profiles
+
+### Key Configuration Details
+
+**Named Volume Strategy:**
 ```yaml
-services:
-  model_server_api:
-    build: .
-    ports:
-      - "8086:8086"
-    volumes:
-      - ./models:/models
-    environment:
-      - MODEL_SOURCE=github
-      - GITHUB_REPO=your-org/ml-models
-    networks:
-      - model_server_net
+volumes:
+  models_data:  # Shared between flask_api and model_syncer
+```
+This ensures model persistence and enables the syncer to update models that the API serves.
 
-networks:
-  model_server_net:
-    external: true
+**Docker Socket Mounting:**
+```yaml
+volumes:
+  - /var/run/docker.sock:/var/run/docker.sock
+```
+Allows the Flask API to create and manage TensorFlow Serving containers dynamically.
+
+**Profile-Based Activation:**
+The `model_syncer` service only runs in local filesystem mode. To start with syncer:
+```bash
+docker-compose --profile local_filesystem up -d
+```
+
+For GitHub mode (no syncer needed):
+```bash
+docker-compose up -d
+```
+
+### Starting the System
+
+**GitHub Mode:**
+```bash
+# Ensure .env has MODEL_SOURCE=github
+docker-compose up -d --build
+```
+
+**Local Filesystem Mode:**
+```bash
+# Ensure .env has MODEL_SOURCE=local_filesystem
+docker-compose --profile local_filesystem up -d --build
+```
+
+### Viewing Logs
+
+```bash
+# API logs
+docker logs -f model_server_api
+
+# Syncer logs (if running)
+docker logs -f model_syncer
+
+# All services
+docker-compose logs -f
 ```
 
 ### TensorFlow Serving Integration
 
 TensorFlow SavedModels are automatically deployed in individual TF Serving containers:
 
-- Each SavedModel gets its own container
-- Flask API proxies requests to TF Serving
-- Internal communication via Docker network
-- Automatic cleanup when models are deactivated
+- Each SavedModel gets its own container (e.g., `tfserving-fire_savedmodel`)
+- Created dynamically when model is activated
+- Removed automatically when model is deactivated
+- Internal communication via `model_server_net` network
+- No manual port configuration needed
 
 ## Logging
 
@@ -644,11 +692,7 @@ The system provides comprehensive logging with clear prefixes:
 
 View logs:
 ```bash
-# Docker
 docker logs -f model_server_api
-
-# Local
-tail -f logs/app.log
 ```
 
 ## Troubleshooting
@@ -656,14 +700,15 @@ tail -f logs/app.log
 ### Common Issues
 
 **Models not appearing:**
-- Verify `MODELS_PATH` is correct
-- Check file permissions
+- Verify `MODELS_PATH` is correct in `.env`
+- Check Docker volume is mounted correctly
 - Ensure model files are complete and valid
+- For local mode: check `model_syncer` logs
 
 **Activation fails:**
 - Check model file format is supported
 - Verify sufficient memory/disk space
-- Review logs for specific errors
+- Review logs: `docker logs model_server_api`
 
 **Predictions fail:**
 - Verify input format matches model expectations
@@ -671,7 +716,13 @@ tail -f logs/app.log
 - Review model info in `/help` endpoint
 
 **Webhook not working:**
-- Verify endpoint is publicly accessible
+- Verify endpoint is publicly accessible (use ngrok for testing)
 - Check GitHub webhook delivery logs
-- Ensure `MODEL_SOURCE=github`
+- Ensure `MODEL_SOURCE=github` in `.env`
+- Check API logs for `[WEBHOOK]` messages
+
+**TensorFlow Serving container issues:**
+- Verify Docker socket is mounted: `/var/run/docker.sock`
+- Check `model_server_net` network exists
+- Review TF Serving logs: `docker logs tfserving-<model_name>`
 
